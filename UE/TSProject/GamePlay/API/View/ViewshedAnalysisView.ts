@@ -8,6 +8,9 @@ import * as UE from 'ue'
 import {$ref, $unref} from "puerts";
 import {BaseView} from "../../../System/API/View/BaseView";
 import {AxesTool} from "../Game_APIList";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
 
 export class ViewshedAnalysisView extends BaseView {
 
@@ -22,6 +25,7 @@ export class ViewshedAnalysisView extends BaseView {
     data: any
     IsAuto: boolean
     IsOnce: boolean
+    IsExist: boolean
 
     Constructor(): void {
         this.PrimaryActorTick.bCanEverTick = true;
@@ -31,20 +35,22 @@ export class ViewshedAnalysisView extends BaseView {
         this.RootComponent = this.Root
         this.Root.SetWorldScale3D(new UE.Vector(50, 50, 50))
         this.ViewshedAnalysisMater = UE.MaterialParameterCollection.Load("/OpenZIAPI/Asset/MaterialFunction/MPC_Decal2.MPC_Decal2")
-        this.IsAuto = false
+        this.IsAuto = true
         this.IsOnce = true
+        this.IsExist = false
     }
 
     ReceiveBeginPlay(): void {
         this.Init()
-        let CurController = UE.GameplayStatics.GetPlayerController(this,0)
+        let CurController = UE.GameplayStatics.GetPlayerController(this, 0)
         CurController.HitResultTraceDistance = 10000000000.0
     }
 
     ReceiveTick(DeltaSeconds: number): void {
         if (!this.IsAuto) {
             this.ListenKeyAction()
-        } else {
+        }
+        if (this.IsExist) {
             this.SetMaterialColor()
         }
     }
@@ -62,8 +68,9 @@ export class ViewshedAnalysisView extends BaseView {
         this.data = jsonData.data
         this.Root.SetWorldScale3D(new UE.Vector(this.data.CameraScale, this.data.CameraScale, this.data.CameraScale))
         if (this.data.IsAuto) {
+            this.IsAuto = true
             let GeographicPos = new UE.GeographicCoordinates(this.data.coordinates.X, this.data.coordinates.Y, this.data.coordinates.Z)
-            let CurEngineLocation = $ref(new UE.Vector(0,0,0))
+            let CurEngineLocation = $ref(new UE.Vector(0, 0, 0))
             this.CoordinateConverterMgr.GeographicToEngine(this.data.GISType, GeographicPos, CurEngineLocation)
             let EngineLocation = $unref(CurEngineLocation)
             if (EngineLocation === null) {
@@ -71,6 +78,15 @@ export class ViewshedAnalysisView extends BaseView {
             }
             this.SetInit(EngineLocation)
         } else {
+            if (this.data.IsAuto !== this.IsAuto) {
+                let NotifiItem
+                let NotifiStyle = new NotificationStyle()
+                NotifiStyle.RegisterFrameStyle(MessageTips.API.ViewshedAnalysis, 600, 3, false)
+                // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+                NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+                NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+                NotifiItem.ExpireAndFadeout()
+            }
             this.IsAuto = false
         }
         return "success"
@@ -118,6 +134,10 @@ export class ViewshedAnalysisView extends BaseView {
         }
     }
 
+    EndDrawing() {
+        this.IsAuto = true
+    }
+
     SetInit(location) {
         if (this.IsOnce) {
             this.SetComponent()
@@ -131,6 +151,7 @@ export class ViewshedAnalysisView extends BaseView {
         this.Decal.SetWorldScale3D(new UE.Vector(this.data.CaptureWidth, this.data.CaptureWidth, this.data.CaptureWidth))
         this.SetMaterialColor()
         AxesTool.OpenAxesTool("")
+        this.IsExist = true
     }
 
     SetComponent() {

@@ -1,8 +1,20 @@
 ///
-/// Copyright by Cengzi Technology Co., Ltd. All Rights Reserved.  Office Website : www.openzi.com || www.cengzi.com 成都曾自科技版权所有 保留所有权利
+/// Copyright by Cengzi Technology Co., Ltd
 /// Created by xLin.
 /// DateTime: 2022/10/10 11:34
 ///
+
+
+export enum LevelState {
+    Removed = 0,
+    Unloaded = 1,
+    FailedToLoad = 2,
+    Loading = 3,
+    LoadedNotVisible = 4,
+    MakingVisible = 5,
+    LoadedVisible = 6,
+    MakingInvisible = 7
+}
 
 import { BaseModel } from "../../../System/API/Model/BaseModel";
 
@@ -10,29 +22,18 @@ export class LevelModel extends BaseModel {
     constructor() {
         super()
         this.DefaultData = {
-            LevelName: String,
-            LevelHeight: Number,
-            LevelRoot: String,
-            StartToLoad: Boolean,
-            LevelPage: String
-        }
-        this.DefaultDataRange = {
+            levelName: "defalut",
+            levelHeight: 0,
+            levelRoot: "",
+            startToLoad: false,
+            levelPage: "",
+            levelState:LevelState.LoadedNotVisible
         }
     }
-    //@添加数据
-    AddData(id, inData) {
-        if (this.AllData.has(id))
-            return undefined
-        //let ruleData = this.ProcessData(inData)
-        this.AllData.set(id, inData)
-        return true
-    }
-    //@解析CSV数据，并储存
+
+    //@parse csv data and store
     AnalysisData(InData):void {
         for (let i = 0; i < InData.length; i++) {
-            // if(InData[0][i] == undefined){
-            //     continue
-            // }
             let temp = {
                 LevelName: String,
                 LevelHeight: Number,
@@ -48,5 +49,24 @@ export class LevelModel extends BaseModel {
             this.AddData(temp.LevelName,temp)
         }
     }
+
+
+    ProcessCsvData(CsvData:any){
+        let temp = {
+            levelName: "",
+            levelHeight: 0,
+            levelRoot: "",
+            startToLoad: false,
+            levelPage: "",
+            levelState:LevelState.Unloaded
+        }
+        temp.levelName = CsvData[0]
+        temp.levelHeight = CsvData[1]
+        temp.levelRoot = CsvData[2]
+        temp.startToLoad =  CsvData[3] === "是"?true:false
+        temp.levelPage = CsvData[4]
+        return temp
+    }
+
 }
 

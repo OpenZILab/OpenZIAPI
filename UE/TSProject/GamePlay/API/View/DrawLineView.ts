@@ -6,6 +6,11 @@
 
 import {DrawView} from "./DrawView";
 import * as UE from "ue";
+import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
+import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
 
 export class DrawLineView extends DrawView {
     Constructor(){
@@ -28,8 +33,37 @@ export class DrawLineView extends DrawView {
         super.Init()
     }
 
+    ClearAllData(): void{
+        super.ClearAllData()
+    }
+
+
     RefreshView(jsonData): string {
-        return super.RefreshView(jsonData)
+        if (!jsonData.data.isAuto){
+            if (this.IsAuto){
+                let NotifiItem
+                let NotifiStyle = new NotificationStyle()
+                NotifiStyle.RegisterFrameStyle(MessageTips.API.DrawLine, 600, 3, false)
+                // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+                NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+                NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+                NotifiItem.ExpireAndFadeout()
+            }
+        }
+        let result = super.RefreshView(jsonData)
+        return result
+    }
+
+    Draw(): string{
+        return this.DrawPointsAndCable()
+    }
+
+    DrawPoints(){
+        return super.DrawPoints()
+    }
+
+    DrawPointsAndCable(){
+        return super.DrawPointsAndCable()
     }
 
     GetUnderHit(): UE.HitResult{
@@ -72,8 +106,8 @@ export class DrawLineView extends DrawView {
         super.EndDraw()
     }
 
-    SetScale(CameraLocation): void{
-        super.SetScale(CameraLocation)
+    SetScaleTargetArmLength(TargetArmLength): void{
+        super.SetScaleTargetArmLength(TargetArmLength)
     }
 
     DrawDownEvent(CurLocation): void{
@@ -94,5 +128,16 @@ export class DrawLineView extends DrawView {
     }
 
     EndDrawEvent(): void{
+        super.EndDrawEvent()
+        let msg ={
+            classDef : "DrawLine",
+            funcDef : "Stop",
+            data : undefined,
+            callback : this.JsonData.callback,
+            pageID : this.JsonData.pageID,
+        }
+        msg.data = {"result":"stop"}
+        let message = PackCallBacKMessage(msg,  msg.data)
+        WebSocketServer.GetInstance().OnSendWebMessage(message)
     }
 }

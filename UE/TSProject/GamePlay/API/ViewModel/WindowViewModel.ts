@@ -12,8 +12,9 @@ import {WindowModel} from "../Model/WindowModel";
 export class WindowViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new WindowModel()
+        this.BaseModel = new WindowModel()
         this._OBJClass = makeUClass(WindowView)
-        this._Type = "Window"
+        this.Type = "Window"
+        this.Birthplace = "Scene"
     }
 } 

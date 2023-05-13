@@ -8,13 +8,28 @@ import { makeUClass} from 'puerts'
 import {MeasureViewModel} from "./MeasureViewModel";
 import {MeasureDistanceModel} from "../Model/MeasureDistanceModel";
 import {MeasureDistanceView} from "../View/MeasureDistanceView";
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
 
 export class MeasureDistanceViewModel extends MeasureViewModel  {
     constructor() {
         super()
-        this._BaseModel = new MeasureDistanceModel()
+        this.BaseModel = new MeasureDistanceModel()
         this._OBJClass = makeUClass(MeasureDistanceView)
-        this._Type = "MeasureDistance"
+        this.Type = "MeasureDistance"
         MeasureViewModel.RegisterViewModel(this)
+        this.Birthplace = "Scene"
+        MessageCenter.Add(this, this.RefreshData, NotificationLists.API.Drawn_Measure_Coodinate)
+    }
+
+    RefreshData(data) {
+        if (data.id == null || data.id == "")
+            return "id key no have"
+        let baseData = this.BaseModel.GetData(data.id)
+        if (baseData !== null) {
+            this.BaseModel.RefreshData(data.id, data)
+            this.UpdateAPINode(this.GetType(),data.id,data)
+        }
+        return "success"
     }
 }

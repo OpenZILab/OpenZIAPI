@@ -6,66 +6,106 @@
 ///
 
 import * as UE from "ue"
-import {argv, makeUClass} from "puerts";
+import { makeUClass } from "puerts";
 import { ObserverPawnView } from "../View/ObserverPawnView";
-import { BaseViewModel } from "../../../System/API/ViewModel/BaseViewModel";
 import { ObserverPawnModel } from "../Model/ObserverPawnModel";
-import { GetObserverPawn } from "../IHandle/IPawnHandle";
 import { PackCallBacKMessage } from "../../../System/API/IHandle/IAPIMessageHandle";
 import { WebSocketServer } from "../../../System/API/Handle/WebSocketServer";
+import { SingleViewModel } from "../../../System/API/ViewModel/SingleViewModel";
+import { MessageCenter } from "../../../System/Core/NotificationCore/MessageManager";
+import { NotificationLists } from "../../../System/Core/NotificationCore/NotificationLists";
 
-export class  ObserverPawnViewModel extends BaseViewModel{
 
-    constructor(){
+export class ObserverPawnViewModel extends SingleViewModel {
+    constructor() {
         super()
-        this._BaseModel = new ObserverPawnModel()
+        this.BaseModel = new ObserverPawnModel()
         this._OBJClass = makeUClass(ObserverPawnView)
-        this._Type = "Pawn"
+        this.Type = "CesiumPawn"
+        this.Birthplace = "Control"
+        this.SingleObject = null
     }
 
-    SpawnDefalutPawn(){
-        let Pawn= this._World.SpawnActor(this._OBJClass, undefined, UE.ESpawnActorCollisionHandlingMethod.Undefined, undefined, undefined) as ObserverPawnView
-        UE.GameplayStatics.GetPlayerController(this._World,0).Possess(Pawn)
+    SpawnObject(msg) {
+        if (this.SingleObject == null) {
+            this.SingleObject = this._World.SpawnActor(this._OBJClass, undefined, UE.ESpawnActorCollisionHandlingMethod.Undefined, undefined, undefined) as ObserverPawnView
+            UE.GameplayStatics.GetPlayerController(this._World, 0).UnPossess()
+            UE.GameplayStatics.GetPlayerController(this._World, 0).SetViewTargetWithBlend(this.SingleObject, 1, UE.EViewTargetBlendFunction.VTBlend_Linear, 0, false)
+            UE.GameplayStatics.GetPlayerController(this._World, 0).Possess(this.SingleObject)
+            this.SetCameraInfo(msg)
+            if(msg.bNotify == undefined||msg.bNotify == true){
+                this.AddAPINode(msg,this.SingleObject,"SpawnObject")
+            }
+            return "SpawnObjectSuccess"
+        } else {
+            UE.GameplayStatics.GetPlayerController(this._World, 0).UnPossess()
+            UE.GameplayStatics.GetPlayerController(this._World, 0).SetViewTargetWithBlend(this.SingleObject, 1, UE.EViewTargetBlendFunction.VTBlend_Linear, 0, false)
+            UE.GameplayStatics.GetPlayerController(this._World, 0).Possess(this.SingleObject)
+            this.SetCameraInfo(msg)
+            if(msg.bNotify == undefined||msg.bNotify == true){
+                this.AddAPINode(msg,this.SingleObject,"SpawnObject")
+            }
+
+        }
+    }
+    UpdateObject(msg) {
+        return this.SetCameraInfo(msg)
     }
 
-    SetCameraInfo(msg){
-        this._BaseModel.SetSingleData(msg.data)
-        msg.data = this._BaseModel.GetSingleData()
-        let ObserverPawn = GetObserverPawn()
-        let result = ObserverPawn.SetCameraInfo(msg)
+    GetObject() {
+        return this.SingleObject
+    }
+
+    SetCameraInfo(msg) {
+        if (this.SingleObject == null) return
+        this.BaseModel.SetSingleData(msg.data)
+        msg.data = this.BaseModel.GetSingleData()
+        //let ObserverPawn = GetObserverPawn()
+        let result = this.SingleObject?.SetCameraInfo(msg)
+        msg.data.result = result
+        if (result === "success") {
+            if (this.BaseModel.IsOverRange) {
+                msg.data.result = "result, but Some data is over the limit"
+            }
+            let Entry = {Class:"CesiumPawn",data:msg.data}
+            MessageCenter.Execute(NotificationLists.API.UPDATE_API, Entry)
+        }
+        let message = PackCallBacKMessage(msg, msg.data)
+        WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
+    }
+
+    GetCameraInfo(msg) {
+        if (this.SingleObject == null) return
+        //let ObserverPawn = GetObserverPawn()
+        let result = this.SingleObject?.GetCameraInfo()
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
-    
-    GetCameraInfo(msg){
-        let ObserverPawn = GetObserverPawn()
-        let result = ObserverPawn.GetCameraInfo()
-        msg.data.result = result
+
+    GetCoord(msg) {
+        if (this.SingleObject == null) return
+        //let ObserverPawn = GetObserverPawn()
+        return this.SingleObject.GetCoord()
+    }
+
+    SetOpenMetaData(msg) {
+        //let ObserverPawn = GetObserverPawn()
+        if (this.SingleObject !== null) {
+            this.SingleObject.SetOpenMetaData(msg);
+            msg.data.result = "success";
+        }
+        else {
+            msg.data.result = "Current Pawn is not CesiumPawn";
+        }
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
     }
 
-    GetCoord(msg){
-        let ObserverPawn = GetObserverPawn()
-        return ObserverPawn.GetCoord()
-    }
 
-    SetOpenMetaData(msg){
-        let ObserverPawn = GetObserverPawn()
-        ObserverPawn.SetOpenMetaData(msg)
-        msg.data.result = "Success"
-        let message = PackCallBacKMessage(msg, msg.data)
-        WebSocketServer.GetInstance().OnSendWebMessage(message)
-    }
 
-    private static Ins: ObserverPawnViewModel;
-    public static Get() {
-      if (!ObserverPawnViewModel.Ins) {
-        ObserverPawnViewModel.Ins = new ObserverPawnViewModel();
-      }
-      return ObserverPawnViewModel.Ins;
-    }
 }
 
 

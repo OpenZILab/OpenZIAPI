@@ -6,13 +6,20 @@
 import { $ref, $unref } from "puerts"
 import * as UE from "ue"
 import { Cesium3DTilesetView } from "./Cesium3DTilesetView"
+import { MessagePopup } from "../../../../System/Core/MessagePupop/MessagePupop"
+import { MessageTips } from "../../../../System/Core/MessagePupop/MessageList"
+import {NotificationStyle} from "../../../../System/API/Handle/MessageNotificationHandle";
+import { MessageCenter } from "../../../../System/Core/NotificationCore/MessageManager"
+import { NotificationLists } from "../../../../System/Core/NotificationCore/NotificationLists"
 
 export class FlattenView extends UE.FlattenActor {
 
     DrawTool: UE.DrawPolygonWireFrame
+    id: string
+
     Constructor() { }
     ReceiveBeginPlay(): void {
-
+        UE.AxesToolSubsystem.Get().RegisterNoSelectClass(UE.DrawPolygonWireFrame.StaticClass())
     }
     ReceiveEndPlay(EndPlayReason: UE.EEndPlayReason): void {
         let OutActorList = $ref(UE.NewArray(UE.Actor))
@@ -44,8 +51,27 @@ export class FlattenView extends UE.FlattenActor {
     }
 
     RefreshView(jsonData) {
+        this.id = jsonData.data.id
         this.DrawTool = this.GetWorld().SpawnActor(UE.DrawPolygonWireFrame.StaticClass(), undefined, UE.ESpawnActorCollisionHandlingMethod.Undefined, undefined, undefined) as UE.DrawPolygonWireFrame
-        this.DrawTool.StartDrawRange()
+        if(jsonData.bUpdate){
+            let UEVectors = UE.NewArray(UE.Vector)
+            let TsVectors = jsonData.data.Vectors
+            TsVectors.forEach(item => {
+                let requireSceneNodeUtil = require("../../../../System/Project/Scene/SceneNodeUtil")
+                let Vectors = requireSceneNodeUtil.TransformHelper.StrToVector(item)
+                UEVectors.Add(Vectors)
+            })
+            this.DrawTool.SetDrawPoints(UEVectors)
+            this.StartFlattnMesh()
+        }else{
+            this.DrawTool.StartDrawRange()
+            let NotifiItem
+            let NotifiStyle = new NotificationStyle()
+            NotifiStyle.RegisterFrameStyle(MessageTips.API.Flatten, 500, 3, false)
+            NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+            NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+            NotifiItem.ExpireAndFadeout()
+        }
         return "success"
     }
 
@@ -68,20 +94,31 @@ export class FlattenView extends UE.FlattenActor {
             this.DrawTool.DrawPolygonWire()
         }
         if (IsRightMouse) {
-            if (this.DrawTool.GetBAllowDrawRange()) {
-                this.DrawTool.EndDrawRange()
-                this.StartFlattnMesh()
-            }
+            this.EndDrawing()
+        }
+    }
+
+
+    EndDrawing(){
+        if (this.DrawTool?.GetBAllowDrawRange()) {
+            this.DrawTool.EndDrawRange()
+            this.StartFlattnMesh()
         }
     }
 
     StartFlattnMesh() {
+        let Vectors = this.DrawTool.GetDrawPoints()
+        MessageCenter.Execute(NotificationLists.API.UPDATE_FLATTEN_DATA,this.id,Vectors)
+        this.UpdateFlattnMesh()
+    }
+    UpdateFlattnMesh() {
         let vectors = this.DrawTool.GetDrawPoints()
         this.FindActorInRange(vectors)
         this.SpawnProceduralMesh()
         this.FlattenMesh(vectors)
         let OutActorList = $ref(UE.NewArray(UE.Actor))
         UE.GameplayStatics.GetAllActorsOfClass(this, UE.Cesium3DTileset.StaticClass(), OutActorList)
+        console.error(`${$unref(OutActorList).Num()}`)
         if ($unref(OutActorList).Num() > 0) {
             for(let i = 0;i<$unref(OutActorList).Num();i++){
                 let Tileset = $unref(OutActorList).Get(i) as Cesium3DTilesetView

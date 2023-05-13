@@ -12,8 +12,9 @@ import {GeoFenceModel} from "../Model/GeoFenceModel";
 export class GeoFenceViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new GeoFenceModel()
+        this.BaseModel = new GeoFenceModel()
         this._OBJClass = makeUClass(GeoFenceView)
-        this._Type = "GeoFence"
+        this.Type = "GeoFence"
+        this.Birthplace = "Scene"
     }
 }

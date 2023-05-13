@@ -7,7 +7,8 @@
 import * as UE from "ue";
 import * as puerts from "puerts";
 
-export function ConsoleCommand(command): void{
+export function ConsoleCommand(command): string{
     let CurrentWorld = puerts.argv.getByName("GameInstance").GetWorld();
     UE.KismetSystemLibrary.ExecuteConsoleCommand(CurrentWorld,command,null)
+    return "success"
 }

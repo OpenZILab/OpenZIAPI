@@ -10,10 +10,12 @@ export class CesiumRasterOverlayView  {
     Type: string
     Obj: UE.Cesium3DTileset
     Override: UE.CesiumRasterOverlay
+    TerrianId:string
     
     constructor(_type: string, _obj: any) {
         this.Obj = _obj
         this.Type = _type
+        this.TerrianId = ""
         if ( this.Type == "TMS") {
             this.Override = new UE.CesiumTileMapServiceRasterOverlay(_obj, "TMS")
         }
@@ -24,16 +26,17 @@ export class CesiumRasterOverlayView  {
             this.Override = new UE.CesiumIonRasterOverlay(_obj, "ION")
         }
         if (this.Override !== null) {
-            UE.WorldFactoryHelpFuntion.AddOwnedComponent(_obj, this.Override)
+            UE.OpenZIFrameworkLibrary.AddOwnedComponent(_obj, this.Override)
         }
 
     }
 
     RefreshView(jsonData) {
         let _data = jsonData.data
+        this.TerrianId = _data.terrainId
         if (this.Type == "TMS") {
             let CurOverlay = this.Override as UE.CesiumTileMapServiceRasterOverlay
-            CurOverlay.Url = _data.Url
+            CurOverlay.Url = _data.url
             CurOverlay.bSpecifyZoomLevels = _data.bSpecifyZoomLevels
             if (CurOverlay.bSpecifyZoomLevels) {
                 CurOverlay.MaximumLevel = _data.maximumLevel
@@ -71,8 +74,8 @@ export class CesiumRasterOverlayView  {
         return "success"
     }
 
-    DeleteOveraly() {
-        UE.WorldFactoryHelpFuntion.RemoveOwnedComponent(this.Obj, this.Override)
+    DeleteOverlay() {
+        UE.OpenZIFrameworkLibrary.RemoveOwnedComponent(this.Obj, this.Override)
         this.Override = null
         this.Obj.RefreshTileset()
     }

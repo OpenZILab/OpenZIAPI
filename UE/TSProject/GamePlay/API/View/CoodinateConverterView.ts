@@ -6,7 +6,8 @@
 
 import { $ref, $unref } from 'puerts'
 import * as UE from 'ue'
-import { EventDispatcher } from '../../../System/Core/EventDispatcher'
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
 
 export class CoodinateConverterView {
 
@@ -16,7 +17,7 @@ export class CoodinateConverterView {
     CoordinateConverterMgr: UE.CoordinateConverterMgr
     GeoReferencingSystem: UE.GeoReferencingSystem
     constructor() {
-        let World = UE.WorldFactoryHelpFuntion.GetCurrentWorld()
+        let World = UE.OpenZIFrameworkLibrary.GetCurrentWorld()
         this.CoordinateConverterMgr = UE.CoordinateConverterMgr.GetCoodinateConverterMgr()
         this.GeoReferencingSystem = World.SpawnActor(UE.GeoReferencingSystem.StaticClass(), undefined, UE.ESpawnActorCollisionHandlingMethod.Undefined, undefined, undefined) as UE.GeoReferencingSystem
         this.CoordinateConverterMgr.SetGeoReferencingSystem(this.GeoReferencingSystem)
@@ -50,7 +51,7 @@ export class CoodinateConverterView {
     }
     SetCesiumGeoLngLatHeight(location) {
         let OutActorList = $ref(UE.NewArray(UE.Actor))
-        let World = UE.WorldFactoryHelpFuntion.GetCurrentWorld()
+        let World = UE.OpenZIFrameworkLibrary.GetCurrentWorld()
         UE.GameplayStatics.GetAllActorsWithTag(World, "DEFAULT_GEOREFERENCE", OutActorList)
         if ($unref(OutActorList).IsValidIndex(0)) {
             this.CesiumGeo = $unref(OutActorList).Get(0) as UE.CesiumGeoreference
@@ -69,13 +70,17 @@ export class CoodinateConverterView {
         this.SetCesiumGeoLngLatHeight(LongitudeLatitudeHeight)
         let IsSuccess = this.CoordinateConverterMgr.GeoReferencingGeneralSetting(this.GeoSetting)
         if(IsSuccess){
-            EventDispatcher.GetInstance().Fire("coordinateOriginChange",location)
-            
+            MessageCenter.Execute(NotificationLists.API.COORDINATEORIGIN_CHANGE,location)
         }
         return IsSuccess
     }
     UpdateGMTByLng() {
         return this.CoordinateConverterMgr.SetGMTBasedOnLng(this.GeoSetting.OriginLongitude)
+    }
+
+
+    GetOriginLocation(){
+        return this.CesiumGeo.TransformEcefToUnreal(new UE.Vector(0,0,0))
     }
 }
 

@@ -12,8 +12,9 @@ import {OriginDestinationLineView} from "../View/OriginDestinationLineView";
 export class OriginDestinationLineViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new OriginDestinationLineModel()
+        this.BaseModel = new OriginDestinationLineModel()
         this._OBJClass = makeUClass(OriginDestinationLineView)
-        this._Type = "OriginDestinationLine"
+        this.Type = "OriginDestinationLine"
+        this.Birthplace = "Scene"
     }
 }

@@ -12,15 +12,15 @@ export class OriginDestinationLineModel extends BaseModel {
         this.DefaultData = {
             id: "OriginDestinationLine_id",
             GISType: 0,
-            start: {X: 104.06168732191, Y: 30.643138179075, Z: 1.5},
-            end: {X: 104.06168732191, Y: 30.643138179075, Z: 1.5},
+            start: { X: 104.06168732191, Y: 30.643138179075, Z: 1.5 },
+            end: { X: 104.06168732191, Y: 30.643138179075, Z: 1.5 },
             middleHeight: 5000,
-            lineColor:{ X: 1, Y: 0, Z: 0, W: 1 },       //基线颜色
-            lineGlow: 2,            //基线的发光强度
-            lineRadius: 0.5,        //基线的半径比例
-            flowColor:{ X: 0, Y: 0, Z: 1, W: 1 },       //光流颜色
-            flowScale: 40,          //光流粒子缩放
-            flowRate: 1             //光流率（控制流动速度时间及光流粒子多少）
+            lineColor: { X: 1, Y: 0, Z: 0, W: 1 }, //baseline color
+            lineGlow: 2, //The luminous intensity of the baseline
+            lineRadius: 0.5, //The radius ratio of the baseline
+            flowColor: { X: 0, Y: 0, Z: 1, W: 1 }, //optical flow color
+            flowScale: 40, //optical flow particle scaling
+            flowRate: 1 //Optical flow rate (control the flow speed time and the number of optical flow particles)
         }
         this.DefaultDataRange = {
         }

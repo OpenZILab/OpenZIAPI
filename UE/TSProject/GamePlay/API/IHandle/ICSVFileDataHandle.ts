@@ -14,7 +14,6 @@ export enum CSVSeparaterType {
     Tab = 2,
 }
 
-
 export function GetCSVLevelData(path, type): any {
     if (path == null)
         path = CSVConfigFilePath

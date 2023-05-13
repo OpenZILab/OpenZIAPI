@@ -24,6 +24,6 @@ export  function OnInputEvent(message): void{
     let commandLineMessage,bSucceed
     UE.PixelStreamingInput.prototype.GetJsonStringValue(message,"Console",commandLineMessage,bSucceed)
     if (bSucceed){
-        UE.KismetSystemLibrary.ExecuteConsoleCommand(UE.WorldFactoryHelpFuntion.GetCurrentWorld(),commandLineMessage)
+        UE.KismetSystemLibrary.ExecuteConsoleCommand(UE.OpenZIFrameworkLibrary.GetCurrentWorld(),commandLineMessage)
     }
 }

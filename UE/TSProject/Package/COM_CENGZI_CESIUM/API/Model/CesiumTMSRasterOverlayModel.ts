@@ -10,11 +10,10 @@ export class CesiumTMSRasterOverlayModel extends CesiumRasterOverlayModel {
     constructor()
     {
         super()
-        this.DefaultData = {
-            url: "",
-            bSpecifyZoomLevels: "",
-            minimumLevel: 256,
-            maximumLevel: 256,
-        }
+ 
+        this.DefaultData.url = ""
+        this.DefaultData.bSpecifyZoomLevels = ""
+        this.DefaultData.minimumLevel = 256
+        this.DefaultData.maximumLevel = 256
     }
 }

@@ -5,55 +5,71 @@
 ///
 
 import * as UE from "ue"
-import { argv, makeUClass } from 'puerts'
+import { argv } from 'puerts'
 import { BaseModel } from "../Model/BaseModel"
 import { PackCallBacKMessage } from "../../../System/API/IHandle/IAPIMessageHandle"
 import { WebSocketServer } from "../../../System/API/Handle/WebSocketServer"
+import { APIViewModelSystem } from "../ApiViewModelSystem"
+import * as IObjectHandle from "../../../GamePlay/API/IHandle/IObjectHandle"
+import { NotificationLists } from "../../Core/NotificationCore/NotificationLists"
+import { MessageCenter } from "../../Core/NotificationCore/MessageManager"
+import { APIHelper } from "../../Project/Scene/SceneNodeUtil";
 
 export abstract class BaseViewModel {
 
     _World: UE.World
-    _OBJMaps: Map<string, any> = new Map<string, any>()
-    _BaseModel: BaseModel
     _OBJClass: UE.Class
-    _OBJObj: Object
+    OBJMaps: Map<string, any> = new Map<string, any>()
+    BaseModel: BaseModel
     Ins: this
-    _Type: string
-
+    Type: string
+    Birthplace: string
+    _OBJNameIndex = 0
     constructor() {
         this._World = (argv.getByName("GameInstance") as UE.GameInstance).GetWorld()
-
     }
 
     GetType() {
-        return this._Type
+        return this.Type
     }
 
     ExecuteAdd(jsonData): string {
+        if (jsonData == null) return "false"
         let _data = jsonData
+        if (jsonData.data == null) return "false"
         let id = jsonData.data.id
-        if (this._BaseModel !== null) {
-            let curvalue = this._BaseModel.AddData(id, _data.data)
-            if (curvalue === undefined){
-                return "create OBJ failed, Some data is over the limit"
-            }
+        if (this.BaseModel !== null) {
+            this.BaseModel.AddData(id, _data.data)
         }
 
         let result: string
-        if (this._OBJMaps.has(id)) {
+        if (this.OBJMaps.has(id)) {
             return "id: " + id + " is existent !"
         }
-        let curActor = this.SpawnOBJ()
+
+        let ActorName = id + "*" + this.Type + "*" + this._OBJClass.GetName() + "_" + "_" + this._OBJNameIndex
+        this._OBJNameIndex++
+        let curActor = this.SpawnOBJ(ActorName)
         if (curActor !== null) {
-            this._OBJMaps.set(id, curActor)
+            APIViewModelSystem.GetInstance().EndDrawing()
+            this.OBJMaps.set(id, curActor)
             console.log("添加" + id + "到OBJMap数组")
-            _data.data = this._BaseModel.GetData(id)
-            result = this._OBJMaps.get(id).RefreshView(_data)
+            _data.data = this.BaseModel.GetData(id)
+            result = this.OBJMaps.get(id).RefreshView(_data)
+            APIViewModelSystem.GetInstance().RegisterDrawFunc(this.Type, id)
             if (result !== "success") {
-                this._OBJMaps.get(id).K2_DestroyActor()
-                this._OBJMaps.delete(id)
-                this._BaseModel.DeleteData(id)
+                this.OBJMaps.get(id).K2_DestroyActor()
+                this.OBJMaps.delete(id)
+                this.BaseModel.DeleteData(id)
+            } else {
+                if(jsonData.bNotify == undefined||jsonData.bNotify == true){
+                    this.AddAPINode(jsonData,curActor,"Add")
+                }
             }
+            if (this.BaseModel.IsOverRange) {
+                result = result + "," + "but Some data is over the limit"
+            }
+
             return result
         }
         return "create OBJ failed"
@@ -64,13 +80,16 @@ export abstract class BaseViewModel {
         let _data = jsonData
         if (id == null)
             return "id key no have"
-        if (this._OBJMaps.has(id) && this._OBJMaps.get(id) !== null) {
-            let curvalue = this._BaseModel.RefreshData(id, _data.data)
-            if (curvalue === undefined){
+        if (this.OBJMaps.has(id) && this.OBJMaps.get(id) !== null) {
+            let curvalue = this.BaseModel.RefreshData(id, _data.data)
+            if (curvalue === undefined) {
                 return "Update OBJ failed, Some data is over the limit"
             }
-            _data.data = this._BaseModel.GetData(id)
-            let result = this._OBJMaps.get(id).RefreshView(_data)
+            _data.data = this.BaseModel.GetData(id)
+            let result = this.OBJMaps.get(id).RefreshView(_data)
+
+            this.UpdateAPINode(this.GetType(),id,jsonData.data)
+
             return result
         }
         return "OBJ is not vaild"
@@ -82,39 +101,47 @@ export abstract class BaseViewModel {
         if (ids == null && ids.length == 0) {
             return "faild ids is null"
         }
-        let failedList: string[]
+        let failedList: string[] = []
         for (let entry of ids) {
-            if (this._OBJMaps.has(entry)) {
-                this._BaseModel.DeleteData(entry)
-                this._OBJMaps.get(entry).K2_DestroyActor()
-                let isComplete = this._OBJMaps.delete(entry)
+            if (this.OBJMaps.has(entry)) {
+                this.BaseModel.DeleteData(entry)
+                this.OBJMaps.get(entry).K2_DestroyActor()
+                let isComplete = this.OBJMaps.delete(entry)
+                this.DeleteAPINode(this.GetType(),entry)
                 if (!isComplete) {
                     failedList.push(entry)
                 }
             }
+            else {
+                failedList.push(entry)
+            }
         }
         if (failedList !== undefined && failedList.length > 0) {
             let beComplete: string
+            beComplete = ""
             for (let entry of failedList) {
                 beComplete += "," + entry
             }
             let re = ","
-            if (beComplete.search(re)) {
+            if (beComplete.search(re) != -1) {
                 beComplete = beComplete.substring(1)
                 return beComplete + ":These ids fail"
             }
         }
         return "success"
+
     }
 
     ExecuteClear(jsondata): string {
-        for (let value of this._OBJMaps.values()) {
+        this.OBJMaps.forEach((value,key)=>{
             if (value !== null) {
                 value.K2_DestroyActor()
+                this.DeleteAPINode(this.GetType(),key)
+
             }
-        }
-        this._OBJMaps.clear()
-        this._BaseModel.ClearData()
+        })
+        this.OBJMaps.clear()
+        this.BaseModel.ClearData()
         return "execution is completed"
     }
 
@@ -127,7 +154,7 @@ export abstract class BaseViewModel {
     }
 
     ExecuteAllShow(jsondata): string {
-        for (let value of this._OBJMaps.values()) {
+        for (let value of this.OBJMaps.values()) {
             if (value !== null) {
                 value.SetActorHiddenInGame(false)
             }
@@ -137,7 +164,7 @@ export abstract class BaseViewModel {
     }
 
     ExecuteAllHidden(jsondata): string {
-        for (let value of this._OBJMaps.values()) {
+        for (let value of this.OBJMaps.values()) {
             if (value !== null) {
                 value.SetActorHiddenInGame(true)
             }
@@ -153,34 +180,87 @@ export abstract class BaseViewModel {
         }
         let beComplete: string = ""
         for (let entry of ids) {
-            if (this._OBJMaps.has(entry)) {
-                this._OBJMaps.get(entry).SetActorHiddenInGame(!isShow)
+            if (this.OBJMaps.has(entry)) {
+                this.OBJMaps.get(entry).SetActorHiddenInGame(!isShow)
+                this.OBJMaps.get(entry).SetActorEnableCollision(isShow)
+                this.HiddenAPINode(this.Type,entry,!isShow)
             } else {
                 beComplete += "," + entry
             }
         }
         let re = ","
-        if (beComplete.search(re)) {
+        if (beComplete.search(re) != -1) {
             beComplete = beComplete.substring(1)
-            return beComplete
+            return "These ids do not exist:" + beComplete
         }
         return "success"
     }
 
-    private SpawnOBJ(): any {
-        let curActor = this._World.SpawnActor(this._OBJClass, undefined, UE.ESpawnActorCollisionHandlingMethod.Undefined, undefined, undefined)
+    SpawnOBJ(Name): any {
+        let curActor = IObjectHandle.SpawnOBJ(this._OBJClass, Name)
         if (curActor !== null) {
             return curActor
         }
         return null
     }
 
+    EndDrawing(id) { }
+
+    GetActorByApiID(APIID: string) {
+        if (this.OBJMaps.has(APIID)) {
+            return this.OBJMaps.get(APIID)
+        }
+        return null
+    }
+
+    //-----------------------Editor--------------------
+    AddAPINode(jsonValue,actor:UE.Actor,func:string) {
+
+        let Entry = { Class: this.GetType(), id: jsonValue.data.id, Actor: actor, func: func, data: jsonValue.data, Action: null }
+        MessageCenter.Execute(NotificationLists.API.SPAWN_API, Entry)
+    }
+
+    DeleteAPINode(Inclass,InId){
+        let Entry = {Class:Inclass,id:InId}
+        MessageCenter.Execute(NotificationLists.API.DELETE_API, Entry)
+    }
+    UpdateAPINode(InClass,InId,InData){
+        let Entry = {Class:InClass,id:InId,data:InData}
+        MessageCenter.Execute(NotificationLists.API.UPDATE_API, Entry)
+    }
+    HiddenAPINode(InClass,InId,bHidden){
+        let Entry = {Class:InClass,id:InId,bHidden:bHidden}
+        MessageCenter.Execute(NotificationLists.API.HIDDEN_API, Entry)
+    }
+
+
     //-------------------------Message---------------------
+
+    AddORUpdate(msg){
+        if(msg.data == null) return
+        let id = msg.data.id
+        let result = "fail"
+        if(this.OBJMaps.has(id)){
+            let Data = {data:{ids:[id]}}
+            this.ExecuteShow(Data)
+            //this.OBJMaps.get(id).SetActorHiddenInGame(false)
+            result = this.ExecuteUpdate(msg)
+        }else{
+            result = this.ExecuteAdd(msg)
+        }
+        msg.data.result = result
+        let message = PackCallBacKMessage(msg, msg.data)
+        WebSocketServer.GetInstance().OnSendWebMessage(message)
+    }
+
+
     Add(msg) {
+        if (msg.data == null) return
         let result = this.ExecuteAdd(msg)
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     Delete(msg) {
@@ -188,6 +268,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     Clear(msg) {
@@ -195,6 +276,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     Update(msg) {
@@ -202,6 +284,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     Show(msg) {
@@ -209,6 +292,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     Hidden(msg) {
@@ -216,6 +300,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     AllShow(msg) {
@@ -223,6 +308,7 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
 
     AllHidden(msg) {
@@ -230,5 +316,27 @@ export abstract class BaseViewModel {
         msg.data.result = result
         let message = PackCallBacKMessage(msg, msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
+        return result
     }
+
+    RefreshData(data) {
+        if (data.id == null || data.id == "")
+            return "id key no have"
+        let baseData = this.BaseModel.GetData(data.id)
+        if (baseData !== null) {
+            let CurData = baseData
+            //@ts-ignore
+            CurData.id = data.id
+            //@ts-ignore
+            CurData.GISType = data.GISType
+            //@ts-ignore
+            CurData.coordinatesList = data.coordinatesList
+            //@ts-ignore
+            CurData.isAuto = data.isAuto
+            let curvalue = this.BaseModel.RefreshData(data.id, CurData)
+            // APIHelper.AddAPIComponentList()
+        }
+        return "success"
+    }
+
 }

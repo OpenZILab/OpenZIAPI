@@ -1,0 +1,32 @@
+=================================================
+FastCopy Pro(ver5.0.3) 开始于 2023/05/08 14:52:41
+<Source>  D:\Project\OpenZIEditor\Packages\Plugins
+<DestDir> D:\Project\OpenZIEditor\Packages\Uproject\1.0.3.1516\OpenZIEditor\Plugins
+<Command> 宸紓 (澶у皬/鏃ユ湡)
+-------------------------------------------------
+
+总读取 = 4,860 MiB
+总写入 = 4,860 MiB
+总文件 = 3,983 (830)
+总时间  = 6.7 秒
+传输速率  = 765.7 MB/s
+文件速率   = 598.4 个文件/秒
+
+结果: (错误文件: 0/错误目录: 0) 在 2023/05/08 14:52:48
+
+=================================================
+FastCopy Pro(ver5.0.3) 开始于 2023/05/09 19:06:23
+<Source>  D:\Project\OpenZI\OpenZIAPI_FromEditor\OpenZIAPI\Packages\Plugins
+<DestDir> D:\Project\OpenZI\OpenZIAPI_FromEditor\OpenZIAPI\Packages\Uproject\0.0.1.905\OpenZIAPI\Plugins
+<Command> 宸紓 (澶у皬/鏃ユ湡)
+-------------------------------------------------
+
+总读取 = 2,807 MiB
+总写入 = 2,807 MiB
+总文件 = 1,392 (251)
+总时间  = 3.9 秒
+传输速率  = 759.7 MB/s
+文件速率   = 359.2 个文件/秒
+
+结果: (错误文件: 0/错误目录: 0) 在 2023/05/09 19:06:27
+

@@ -12,8 +12,9 @@ import {HeatMapModel} from "../Model/HeatMapModel"
 export class HeatMapViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new HeatMapModel()
+        this.BaseModel = new HeatMapModel()
         this._OBJClass = makeUClass(HeatMapView)
-        this._Type = "HeatMap"
+        this.Type = "HeatMap"
+        this.Birthplace = "Scene"
     }
 }

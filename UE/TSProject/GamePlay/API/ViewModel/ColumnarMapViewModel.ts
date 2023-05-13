@@ -12,8 +12,9 @@ import {ColumnarMapView} from "../View/ColumnarMapView";
 export class ColumnarMapViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new ColumnarMapModel()
+        this.BaseModel = new ColumnarMapModel()
         this._OBJClass = makeUClass(ColumnarMapView)
-        this._Type = "ColumnarMap"
+        this.Type = "ColumnarMap"
+        this.Birthplace = "Scene"
     }
 }

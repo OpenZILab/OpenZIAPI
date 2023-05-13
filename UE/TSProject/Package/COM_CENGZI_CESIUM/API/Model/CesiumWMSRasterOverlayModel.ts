@@ -10,13 +10,11 @@ export class CesiumWMSRasterOverlayModel extends CesiumRasterOverlayModel {
     constructor()
     {
         super()
-        this.DefaultData = {
-            url: "",
-            layers: "",
-            tileWidth: 256,
-            tileHeight: 256,
-            minimumLevel: 0,
-            maximumLevel: 14
-        }
+        this.DefaultData.url = ""
+        this.DefaultData.layers = ""
+        this.DefaultData.minimumLevel = 0
+        this.DefaultData.maximumLevel = 14
+        this.DefaultData.tileWidth = 256
+        this.DefaultData.tileHeight = 256
     }
 }

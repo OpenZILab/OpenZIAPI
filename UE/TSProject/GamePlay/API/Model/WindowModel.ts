@@ -19,6 +19,11 @@ export class WindowModel extends BaseModel {
             size: {X: 400, Y:300},
             pivot: {X: 0, Y:0},
             offset: {X: 0, Y:0},
+            showCloseButton:true,
+            closeOffset:{X: 0, Y:0},
+            autoMove: false,
+            followerFromType:"",
+            followerFromId:""
         }
         this.DefaultDataRange = {
             GISType: {Range: {"min": 0, "max":3}},

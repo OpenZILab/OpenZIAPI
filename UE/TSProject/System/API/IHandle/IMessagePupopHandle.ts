@@ -4,7 +4,7 @@
 /// DateTime:  2022/12/07
 ///
 
-import { EMessageType, MessagePopupHandle } from "../Handle/MessagePupopHandle";
+import { MessagePopupHandle } from "../Handle/MessagePupopHandle";
 
 export function StartMessagePupop(){
     let MessagePupop = new MessagePopupHandle()

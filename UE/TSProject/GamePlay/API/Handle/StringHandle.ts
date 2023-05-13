@@ -3,3 +3,18 @@
 /// Created by behiever.
 /// DateTime: 2022/9/1 16:21
 ///
+
+
+import * as UE from "ue";
+import * as puerts from "puerts";
+
+
+// export function SplitStr(targetStr:string,separator:string):string[]{
+//     let index:number = 0
+//     let outStr:string[]
+//     let curStr = targetStr.split(separator,index)
+//     outStr.push(,)
+//     return outStr
+// }
+
+

@@ -12,8 +12,9 @@ import {GeoOverlayView} from "../View/GeoOverlayView";
 export class GeoOverlayViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new GeoOverlayModel()
+        this.BaseModel = new GeoOverlayModel()
         this._OBJClass = makeUClass(GeoOverlayView)
-        this._Type = "GeoOverlay"
+        this.Type = "GeoOverlay"
+        this.Birthplace = "Scene"
     }
 }

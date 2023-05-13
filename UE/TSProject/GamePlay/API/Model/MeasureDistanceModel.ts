@@ -17,6 +17,14 @@ export class MeasureDistanceModel extends BaseModel {
             lineColor: { X: 0, Y: 1, Z: 0, W: 1 },
             MinDistance: 100000,
             MaxDistance: 1000000,
+            isAuto: false,
+            GISType: 0,
+            coordinatesList: [
+                { X: 104.06168732191, Y: 30.643138179075, Z: 1.5 },
+                { X: 104.06168645118, Y: 30.643228368068, Z: 1.5 },
+                { X: 104.06179075814, Y: 30.643229120905, Z: 1.5 },
+                { X: 104.06179162878, Y: 30.643138931909, Z: 1.5 },
+            ],
         }
         this.DefaultDataRange = {
             measureType: {Range: {"min": 1, "max":3}},

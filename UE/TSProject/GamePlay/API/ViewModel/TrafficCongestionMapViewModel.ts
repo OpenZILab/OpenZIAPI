@@ -12,8 +12,9 @@ import {TrafficCongestionMapModel} from "../Model/TrafficCongestionMapModel";
 export class TrafficCongestionMapViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new TrafficCongestionMapModel()
+        this.BaseModel = new TrafficCongestionMapModel()
         this._OBJClass = makeUClass(TrafficCongestionMapView)
-        this._Type = "TrafficCongestionMap"
+        this.Type = "TrafficCongestionMap"
+        this.Birthplace = "Scene"
     }
 }

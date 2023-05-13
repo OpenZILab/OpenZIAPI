@@ -12,7 +12,9 @@ import {NewArray} from "ue";
 import {SceneViewingCameraView} from "./SceneViewingCameraView";
 import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
 import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
-
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
 
 export class SceneViewingView extends BaseView {
 
@@ -36,6 +38,7 @@ export class SceneViewingView extends BaseView {
     CameraActor: UE.TArray<SceneViewingCameraView>
     callback : any
     pageID : any
+    CameraViewClass: any
 
 
     Constructor(): void {
@@ -59,6 +62,7 @@ export class SceneViewingView extends BaseView {
         this.CameraActor = NewArray(SceneViewingCameraView)
         this.callback = 0
         this.pageID = 0
+        this.CameraViewClass = makeUClass(SceneViewingCameraView)
     }
 
     ReceiveBeginPlay(): void {
@@ -84,10 +88,16 @@ export class SceneViewingView extends BaseView {
 
     ReceiveEndPlay(EndPlayReason: UE.EEndPlayReason) {
         super.ReceiveEndPlay(EndPlayReason);
+        this.SceneViewPawnToDefaultPawn()
         for (let i = 0; i < this.CameraActor.Num(); i++){
             this.CameraActor.Get(i).K2_DestroyActor()
         }
         this.CameraActor.Empty()
+        for (let i = 0; i < this.SplineMesh.Num(); i++){
+            this.SplineMesh.Get(i).K2_DestroyComponent(this.SplineMesh.Get(i))
+        }
+        this.SplineMesh.Empty()
+        this.Spline.ClearSplinePoints()
     }
 
     ListenKeyAction(): void {
@@ -120,6 +130,7 @@ export class SceneViewingView extends BaseView {
         this.Distance = 0
         this.CurNum = 1
         this.SplineDistance.length = 0
+        this.SceneViewPawnToDefaultPawn()
     }
 
     RefreshView(jsonData): string {
@@ -140,6 +151,9 @@ export class SceneViewingView extends BaseView {
                     let CurAT = new UE.Vector(this.data.pointsInfoList[index].arriveTangent.X, this.data.pointsInfoList[index].arriveTangent.Y, this.data.pointsInfoList[index].arriveTangent.Z)
                     let CurLT = new UE.Vector(this.data.pointsInfoList[index].leaveTangent.X, this.data.pointsInfoList[index].leaveTangent.Y, this.data.pointsInfoList[index].leaveTangent.Z)
                     this.CreatCameraMeshActor(uecoor, CurRotation, index, this.data.pointsInfoList[index].point_type, CurAT, CurLT)
+                    for (let i = 0; i < this.CameraActor.Num(); i++) {
+                        this.CameraActor.Get(i).IsAdding = false
+                    }
                     this.UpdateSpline(true)
                     if (this.data.isShowSplineMesh) {
                         this.CreatSplineMesh()
@@ -163,6 +177,20 @@ export class SceneViewingView extends BaseView {
     }
 
     StartAddScenePoint() {
+        let NotifiItem
+        let NotifiStyle = new NotificationStyle()
+        NotifiStyle.RegisterFrameStyle(MessageTips.API.ScreenViewing_1, 600, 3, false)
+        // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+        NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+        NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+        NotifiItem.ExpireAndFadeout()
+        let NotifiItem2
+        let NotifiStyle2 = new NotificationStyle()
+        NotifiStyle2.RegisterFrameStyle(MessageTips.API.ScreenViewing_2, 600, 3, false)
+        NotifiItem2 = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle2)
+        NotifiItem2.SetCompletionState(UE.EDisplayState.CS_None)
+        NotifiItem2.ExpireAndFadeout()
+
         if (this.SceneViewingPawn === undefined) {
             let CurCamera = UE.GameplayStatics.GetPlayerCameraManager(this.CurrentWorld, 0)
             let CameraTransform = CurCamera.GetTransform()
@@ -181,6 +209,9 @@ export class SceneViewingView extends BaseView {
         Controller.SetViewTargetWithBlend(this.SceneViewingPawn, 0, UE.EViewTargetBlendFunction.VTBlend_Linear, 0, false)
         Controller.Possess(this.SceneViewingPawn)
         this.IsAddPoint = true
+        for (let i = 0; i < this.CameraActor.Num(); i++) {
+            this.CameraActor.Get(i).IsAdding = true
+        }
     }
 
     AddPoint() {
@@ -191,10 +222,11 @@ export class SceneViewingView extends BaseView {
 
     CreatCameraMeshActor(location: UE.Vector, Rotiton: UE.Rotator, Index: number, SplinePointType: number, ATangent: UE.Vector, LTangent: UE.Vector) {
         let transfrom = new UE.Transform(Rotiton, location, new UE.Vector(5, 5, 5))
-        let CurCameraMeshActor = this.GetWorld().SpawnActor(makeUClass(SceneViewingCameraView), transfrom, UE.ESpawnActorCollisionHandlingMethod.AlwaysSpawn, undefined, undefined) as SceneViewingCameraView
+        let CurCameraMeshActor = this.GetWorld().SpawnActor(this.CameraViewClass, transfrom, UE.ESpawnActorCollisionHandlingMethod.AlwaysSpawn, undefined, undefined) as SceneViewingCameraView
         this.CameraActor.Add(CurCameraMeshActor)
         CurCameraMeshActor.SetSplinePointInfo(location, Rotiton, Index, SplinePointType, ATangent, LTangent)
         CurCameraMeshActor.SetOwnerActor(this)
+        CurCameraMeshActor.IsAdding = true
         if (!this.data.isShowPointCamera) {
             CurCameraMeshActor.SetActorHiddenInGame(true)
         }
@@ -203,6 +235,9 @@ export class SceneViewingView extends BaseView {
     //结束加点
     EndAddScenePoint() {
         this.IsAddPoint = false
+        for (let i = 0; i < this.CameraActor.Num(); i++) {
+            this.CameraActor.Get(i).IsAdding = false
+        }
         this.SceneViewPawnToDefaultPawn()
         this.UpdateSpline(false)
         if (this.data.isShowSplineMesh) {
@@ -216,6 +251,7 @@ export class SceneViewingView extends BaseView {
         Controller.UnPossess()
         Controller.SetViewTargetWithBlend(this.defaultPawn, 0, UE.EViewTargetBlendFunction.VTBlend_Linear, 0, false)
         Controller.Possess(this.defaultPawn)
+        UE.WidgetBlueprintLibrary.SetInputMode_GameAndUIEx(Controller,undefined,UE.EMouseLockMode.DoNotLock,false)
         if (this.SceneViewingPawn) {
             this.SceneViewingPawn.K2_DestroyActor()
             this.SceneViewingPawn = undefined
@@ -293,12 +329,15 @@ export class SceneViewingView extends BaseView {
     StartPlay(msg) {
         this.callback = msg.callback
         this.pageID = msg.pageID
+        this.EndAddScenePoint()
         if (this.Spline.GetNumberOfSplinePoints() >= 2) {
+            this.defaultPawn = undefined
             this.defaultPawn = UE.GameplayStatics.GetPlayerPawn(this.CurrentWorld, 0)
             this.Distance = 0
             this.CurNum = 0
             let CurPlayerController = UE.GameplayStatics.GetPlayerController(this, 0)
             CurPlayerController.SetViewTargetWithBlend(this, 0, UE.EViewTargetBlendFunction.VTBlend_Linear, 0, false)
+            UE.WidgetBlueprintLibrary.SetInputMode_UIOnlyEx(CurPlayerController,undefined,UE.EMouseLockMode.DoNotLock)
             this.IsPlaying = true
             this.HiddenCameraMeshActor(true)
             this.HiddenSplineMesh(true)

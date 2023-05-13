@@ -21,6 +21,7 @@ class TakeProcess
     }
 }
 
+
 export class EventDispatcher extends Sigleton {
     static GetInstance(): EventDispatcher {
         return super.TakeInstance(EventDispatcher)
@@ -30,7 +31,8 @@ export class EventDispatcher extends Sigleton {
         console.log("EventDispatcher OnInit")
     }
 
-    private callMap: Map<string, any[]> = new Map()
+    protected callMap: Map<string, any[]> = new Map()
+
     public Add(obj: any, func: Function, name: string){
         let listMaps = this.callMap.get(name)
             if (listMaps){
@@ -42,6 +44,7 @@ export class EventDispatcher extends Sigleton {
             } else {
                 this.callMap.set(name, [])
                 listMaps = this.callMap.get(name)
+                // console.log(this.callMap.size)
             }
         let process = new TakeProcess(func)
         listMaps.push([obj,process])
@@ -63,6 +66,19 @@ export class EventDispatcher extends Sigleton {
     }
 
     public Fire(name: string,...data: any[]){
+        // console.log("wwwwwwwwwwwwwww  "+data)
+        //     console.log(name + this.callMap.size)
+        let listMaps = this.callMap.get(name)
+        if (listMaps){
+            for (let i = listMaps.length - 1; i >= 0; i--){
+                listMaps[i][1].OnProcess(listMaps[i][0],data)
+            }
+        }
+    }
+
+    public Excute(name: string,data: any){
+        // console.log("wwwwwwwwwwwwwww  "+data)
+        //     console.log(name + this.callMap.size)
         let listMaps = this.callMap.get(name)
         if (listMaps){
             for (let i = listMaps.length - 1; i >= 0; i--){

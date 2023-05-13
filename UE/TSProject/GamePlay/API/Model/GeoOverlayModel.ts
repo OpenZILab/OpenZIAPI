@@ -21,6 +21,10 @@ export class GeoOverlayModel extends BaseModel {
             ],
             height: 500,
             fillColor: { X: 1, Y: 1, Z: 0, W: 1 },
+            OverlaywallUseCustomMaterial: false,
+            OverlaywallMaterial:"/OpenZIAPI/Asset/Material/ff_Material_tSimple_Inst",
+            OverlayTopUseCustomMaterial:false,
+            OverlayTopMaterial:"/OpenZIAPI/Asset/Material/ff_Material_tSimple_Inst"
         }
         this.DefaultDataRange = {
             GISType: {Range: {"min": 0, "max":3}},

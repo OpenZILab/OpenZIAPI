@@ -15,14 +15,15 @@ export class Cesium3DTilesetViewModel extends BaseViewModel{
     type:string
     constructor() {
         super()
-        this._BaseModel = new Cesium3DTilesetModel()
+        this.BaseModel = new Cesium3DTilesetModel()
         this._OBJClass =makeUClass(Cesium3DTilesetView)
         this.type = "Cesium3DTileset"
-        this._Type = "Cesium3DTileset"
+        this.Type = "Cesium3DTileset"
+        this.Birthplace = "Coverage"
     }
     ExecuteGetAllCesium3DTileset(jsondata){
         let CesiumModels = []
-        let allModels = this._BaseModel.GetAllData()
+        let allModels = this.BaseModel.GetAllData()
         if(allModels.size>0){
           allModels.forEach((value,key)=>{
             CesiumModels.push(value)
@@ -33,7 +34,7 @@ export class Cesium3DTilesetViewModel extends BaseViewModel{
   
       ExecuteGetCesium3DTilesetById(jsondata){
         let id = jsondata.data.id
-        let Model = this._BaseModel.GetData(id)
+        let Model = this.BaseModel.GetData(id)
         return Model
       }
   

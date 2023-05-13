@@ -9,7 +9,6 @@ import {BaseView} from "../../../System/API/View/BaseView";
 import {NewArray} from "ue";
 import {$ref, $unref} from "puerts";
 
-
 export class LightEffectFlowLineView extends BaseView {
 
     //@C++
@@ -107,8 +106,11 @@ export class LightEffectFlowLineView extends BaseView {
     }
 
     RefreshView(jsonData): string {
-        this.data = jsonData.data
         this.ClearAllData()
+        this.data = jsonData.data
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
         let CurVector = new UE.Vector(0, 0, 0)
         let AllPoints = NewArray(UE.Vector)
         for (let i = 0; i < this.data.coordinatesList.length; i++) {
@@ -123,17 +125,23 @@ export class LightEffectFlowLineView extends BaseView {
             AllPoints.Add(EngineLocation)
         }
         CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length, CurVector.Z / this.data.coordinatesList.length)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
         let FHitResult = $ref(new UE.HitResult)
         this.K2_SetActorLocation(CurVector, false, FHitResult, false)
-        if (this.data.loop) {
-            AllPoints.Add(AllPoints.Get(AllPoints.Num() - 1))
-        }
+        // if (this.data.loop) {
+        //     AllPoints.Add(AllPoints.Get(0))
+        // }
         for (let i = 0; i < AllPoints.Num(); i++) {
-            this.Spline.SetSplinePointType(i, this.data.splinePointType, false)
             this.Spline.AddSplinePointAtIndex(AllPoints.Get(i), i, UE.ESplineCoordinateSpace.World, false)
+            this.Spline.SetSplinePointType(i, this.data.splinePointType, false)
         }
+        this.Spline.SetClosedLoop(this.data.loop, true)
         this.Spline.UpdateSpline()
+
         this.CreatSplineMesh()
+
         this.CreatNiagara()
         this.IsStart = true
         this.FlowRate = this.data.flowRate
@@ -141,7 +149,13 @@ export class LightEffectFlowLineView extends BaseView {
     }
 
     CreatSplineMesh() {
-        let SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 1
+        // let SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 1
+        let SplineMeshNum
+        if (this.data.loop) {
+            SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 1
+        } else {
+            SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 2
+        }
         if (SplineMeshNum < 0) {
             return "No valid point currently exists"
         }
@@ -154,7 +168,7 @@ export class LightEffectFlowLineView extends BaseView {
         let CurStaticMesh = UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/StaticMeshOD.StaticMeshOD")
         this.MI_Base.SetVectorParameterValue("LineColor", new UE.LinearColor(this.data.lineColor.X, this.data.lineColor.Y, this.data.lineColor.Z, this.data.lineColor.W))
         this.MI_Base.SetScalarParameterValue("LineGlow", this.data.lineGlow)
-        for (let i = 0; i < SplineMeshNum; i++) {
+        for (let i = 0; i <= SplineMeshNum; i++) {
             let name = "SplineMesh_" + i
             let CurSplineMesh = new UE.SplineMeshComponent(this, name)
             CurSplineMesh.SetMobility(UE.EComponentMobility.Movable)
@@ -173,6 +187,10 @@ export class LightEffectFlowLineView extends BaseView {
             this.Spline.GetLocationAndTangentAtSplinePoint(i + 1, location_2_rev, tangent_2_rev, UE.ESplineCoordinateSpace.World)
             let tangent_1 = $unref(tangent_1_rev)
             let tangent_2 = $unref(tangent_2_rev)
+            if (this.Spline.GetSplinePointType(i) === UE.ESplinePointType.Linear) {
+                tangent_1 = new UE.Vector(0, 0, 0)
+                tangent_2 = new UE.Vector(0, 0, 0)
+            }
             this.SplineMesh.Get(i).SetStartAndEnd($unref(location_1_rev), tangent_1, $unref(location_2_rev), tangent_2, true)
         }
     }

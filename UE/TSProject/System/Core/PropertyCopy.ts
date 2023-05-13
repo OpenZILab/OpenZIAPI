@@ -9,7 +9,7 @@ type _typeObj = { [anyKey: string]: any }
 export class PropertyCopy{
 
     /**
-     * 判断对象是否为数组
+     * Determine whether the object is an array
      * @param obj
      * @returns
      */
@@ -18,46 +18,49 @@ export class PropertyCopy{
     }
 
     /**
-     * 对象深拷贝
+     * object deep copy
      * @param tSource
      * @returns
      */
     public static DeepCopy<T>(tSource: T, tTarget?: Record<string, any> | T): T {
-        if (this.IsArray(tSource)) {
-            tTarget = tTarget || [];
-        } else {
-            tTarget = tTarget || {};
+        if (!tTarget) {
+            tTarget = Array.isArray(tSource) ? [] : {}
         }
-        for (const key in tSource) {
-            if (Object.prototype.hasOwnProperty.call(tSource, key)) {
-                if (typeof tSource[key] === "object" && typeof tSource[key] !== null) {
-                    tTarget[key] = this.IsArray(tSource[key]) ? [] : {};
-                    this.DeepCopy(tSource[key], tTarget[key]);
+
+        for (const prop in tSource) {
+            if (Object.prototype.hasOwnProperty.call(tSource, prop)) {
+                const sourceProp = tSource[prop]
+                if (sourceProp && typeof sourceProp === 'object') {
+                    // @ts-ignore
+                    tTarget[prop] = Array.isArray(sourceProp) ? [] : {}
+                    this.DeepCopy(sourceProp, tTarget[prop])
                 } else {
-                    tTarget[key] = tSource[key];
+                    tTarget[prop] = sourceProp
                 }
             }
         }
-        return tTarget as T;
+
+        return tTarget as T
     }
 
     /**
-     * 对象浅拷贝
+     * object shallow copy
      * @param tSource
      * @returns
      */
     public static SimpleCopy<T>(tSource: T, tTarget?: Record<string, any> | T): T {
-        if (this.IsArray(tSource)) {
-            tTarget = tTarget || [];
-        } else {
-            tTarget = tTarget || {};
+        if (!tTarget) {
+            tTarget = Array.isArray(tSource) ? [] : {}
         }
-        for (const key in tSource) {
-            if (Object.prototype.hasOwnProperty.call(tSource, key)) {
-                tTarget[key] = tSource[key];
+
+        for (const prop in tSource) {
+            if (Object.prototype.hasOwnProperty.call(tSource, prop)) {
+                const sourceProp = tSource[prop]
+                tTarget[prop] = sourceProp
             }
         }
-        return tTarget as T;
+
+        return tTarget as T
     }
 }
 

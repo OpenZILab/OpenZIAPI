@@ -5,7 +5,17 @@
 ///
 
 import * as ConsoleHandle from "../Handle/ConsoleHandle"
+import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
+import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
 
-export function ConsoleCommand(command): void{
-    ConsoleHandle.ConsoleCommand(command)
+export function ConsoleCommand(message): void{
+    let result = ConsoleHandle.ConsoleCommand(message.data.Command)
+    let msg ={
+        classDef : message.classDef,
+        funcDef : message.funcDef,
+        callback : message.callback,
+        pageID : message.pageID,
+    }
+    let message_temp = PackCallBacKMessage(msg, {result: result})
+    WebSocketServer.GetInstance().OnSendWebMessage(message_temp)
 }

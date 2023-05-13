@@ -7,18 +7,21 @@
 import { BaseModel } from "../../../System/API/Model/BaseModel"
 
 export class CoodinateConventerModel extends BaseModel {
+  //DataType
     constructor()
     {
+    
         super()
         this.DefaultData = {
             coordinateOrigin : {X:116.38980519225,Y:39.916786010213,Z:0.0},
             projectionCoordinateSystem : "EPSG:4544",
-            planetShape:1,
+            planetShape:0,
             GISType : 0,
             originOffset : {X:0, Y:0, Z:0},
             scale : 100
 
         }
+        //this.DataType = new CoodinateConventerData(this)
         this.DefaultDataRange = {
             GISType: {Range: {"min": 0, "max":3}},
             coordinateOrigin: {Range: {"min": {X: -180, Y: -90, Z: -1000000}, "max":{X: 180, Y: 90, Z: 1000000}}},
@@ -26,15 +29,10 @@ export class CoodinateConventerModel extends BaseModel {
             originOffset: {Range: {"min": {X: -10000, Y: -10000, Z: -10000}, "max":{X: 10000, Y: 10000, Z: 10000}}},
             scale: {Range: {"min": 0, "max":100000}}
         }
-        
         this.typeName = "CoodinateConventer"
         this.funcName = "Refresh"
         this.InitDataAndRange()
-    
     }
-    
-
-
 }
 
 

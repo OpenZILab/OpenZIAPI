@@ -27,6 +27,7 @@ export class PlaneBase extends BaseView {
     Height:number
 
     Constructor(): void {
+        super.Constructor()
         this.PrimaryActorTick.bCanEverTick = true;
         this.Scene = this.CreateDefaultSubobjectGeneric<UE.SceneComponent>("Scene", UE.SceneComponent.StaticClass())
         this.Spline = this.CreateDefaultSubobjectGeneric<UE.SplineComponent>("Spline", UE.SplineComponent.StaticClass())

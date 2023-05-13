@@ -15,16 +15,18 @@ export class CesiumSunViewModel extends BaseViewModel{
 
     constructor() {
         super()
-        this._BaseModel = new CesiumSunModel()
+        this.BaseModel = new CesiumSunModel()
         //this._OBJClass = .StaticClass()
         this.OBJ = new CesiumSunView()
-        this._Type = "CesiumSun"
+        this.Type = "CesiumSun"
+        this.Birthplace = "Coverage"
+
     }
 
     UpdateDataTime(jsonData){
         let _data = jsonData
-        this._BaseModel.SetSingleData(_data.data)
-        _data.data = this._BaseModel.GetSingleData()
+        this.BaseModel.SetSingleData(_data.data)
+        _data.data = this.BaseModel.GetSingleData()
         if (this.OBJ == null ){
             this.OBJ = new CesiumSunView()
         }
@@ -45,6 +47,11 @@ export class CesiumSunViewModel extends BaseViewModel{
         }
         if (IsDataSuc!= true) {
             jsonData.data.result = IsDataSuc
+        }
+        if (jsonData.data.result === "success"){
+            if (this.BaseModel.IsOverRange){
+                jsonData.data.result = "success,  but Some data is over the limit"
+            }
         }
         let message = PackCallBacKMessage(jsonData, jsonData.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)

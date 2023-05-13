@@ -14,19 +14,19 @@ export class GeoOverlayView extends PlaneBase {
 
     //@C++
     DyMIOverlay: UE.MaterialInstanceDynamic
+    DyMITop: UE.MaterialInstanceDynamic
     CoordinateConverterMgr: UE.CoordinateConverterMgr
     //@ts
     data: any
 
     Constructor(): void {
         super.Constructor()
-        let Material = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/PureColorMaterial_Inst")
-        this.DyMIOverlay = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material,"None",UE.EMIDCreationFlags.None)
+        this.DyMIOverlay = undefined
+        this.DyMITop = undefined
     }
 
     ReceiveBeginPlay(): void {
         super.ReceiveBeginPlay()
-
         this.Init()
     }
 
@@ -62,7 +62,7 @@ export class GeoOverlayView extends PlaneBase {
             this.TopVertices.Add(vector2)
         }
         this.Spline.UpdateSpline()
-        let R = this.DrawPlane(0,this.TopVertices,this.DyMIOverlay,this.Height,0,new UE.Vector2D(0,0),true)
+        let R = this.DrawPlane(0,this.TopVertices,this.DyMITop,this.Height,0,new UE.Vector2D(0,0),true)
         for (let key = 0; key < this.BottomVertices.Num(); key++){
             this.BodyVertices.Add(this.BottomVertices.Get(key))
             let CurValue1 = UE.KismetMathLibrary.SelectInt(0,key + 1,UE.KismetMathLibrary.EqualEqual_IntInt(key + 1,this.BottomVertices.Num()))
@@ -82,6 +82,9 @@ export class GeoOverlayView extends PlaneBase {
     RefreshView(jsonData): string {
         this.ClearAllData()
         this.data = jsonData.data
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
         let CurVector = new UE.Vector(0,0,0)
         let AllPoints = NewArray(UE.Vector)
         for (let i = 0; i < this.data.coordinatesList.length;i++){
@@ -96,6 +99,10 @@ export class GeoOverlayView extends PlaneBase {
             AllPoints.Add(EngineLocation)
         }
         CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length,CurVector.Z / this.data.coordinatesList.length)
+
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
         let FHitResult = $ref(new UE.HitResult)
         this.K2_SetActorLocation(CurVector, false, FHitResult, false)
         for (let i = 0; i < AllPoints.Num(); i++){
@@ -103,9 +110,29 @@ export class GeoOverlayView extends PlaneBase {
             this.Spline.SetSplinePointType(i,UE.ESplinePointType.Linear,false)
         }
         this.Spline.UpdateSpline()
-        let height = this.data.height
-        let color = new UE.LinearColor(this.data.fillColor.X,this.data.fillColor.Y,this.data.fillColor.Z,this.data.fillColor.W)
-        this.UpdateHeightandColor(height,color)
+        this.Height = this.data.height
+
+        if (this.data.OverlaywallUseCustomMaterial){
+            let Material_1 = UE.MaterialInstance.Load(this.data.OverlaywallMaterial)
+            this.DyMIOverlay = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_1,"None",UE.EMIDCreationFlags.None)
+        }
+        else {
+            let Material_1 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/PureColorMaterial_Inst")
+            this.DyMIOverlay = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_1,"None",UE.EMIDCreationFlags.None)
+            let color1 = new UE.LinearColor(this.data.fillColor.X,this.data.fillColor.Y,this.data.fillColor.Z,this.data.fillColor.W)
+            this.DyMIOverlay.SetVectorParameterValue("BaseColor",color1)
+        }
+
+        if (this.data.OverlayTopUseCustomMaterial){
+            let Material_2 = UE.MaterialInstance.Load(this.data.OverlayTopMaterial)
+            this.DyMITop = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_2,"None",UE.EMIDCreationFlags.None)
+        }
+        else {
+            let Material_2 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/PureColorMaterial_Inst")
+            this.DyMITop = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_2,"None",UE.EMIDCreationFlags.None)
+            let color1 = new UE.LinearColor(this.data.fillColor.X,this.data.fillColor.Y,this.data.fillColor.Z,this.data.fillColor.W)
+            this.DyMITop.SetVectorParameterValue("BaseColor",color1)
+        }
         this.Rebuild()
         return "success"
     }

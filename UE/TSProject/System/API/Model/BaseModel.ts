@@ -4,43 +4,50 @@
 /// DateTime: 2022/9/23 16:40
 ///
 
-import { PropertyCopy } from "../../Core/PropertyCopy";
+import path = require("path")
+import { PropertyCopy } from "../../Core/PropertyCopy"
+import { GetSystem } from "../../Engine/QEngine"
+import { ProjectSystem } from "../../Project/Project/ProjectSystem"
+import * as UE from "ue"
 
-const ApiListConfig_Dev = "../../Script/Config/APIListConfig-Dev.json"
-const ApiListConfig_User = "../../Script/Config/APIListConfig-User.json"
+const ApiListConfig_Dev = "Script/Config/APIListConfig-Dev.json"
+const ApiListConfig_User = "Script/Config/APIListConfig-User.json"
 
 export class BaseModel {
-
+    //@默认数据
     DefaultData: { [key: string]: any }
     DefaultDataRange: {
         [key: string]: {}
     }
     AllData: Map<string, any> = new Map<string, any>()
     SingleData: object
-    typeName:string
-    funcName:string
+    typeName: string
+    funcName: string
+    IsOverRange: boolean
 
     constructor() {
+        this.IsOverRange = false
     }
 
-    InitDataAndRange(){
-        let RangeDataByJson  = this.GenDefaultRange(this.typeName,this.funcName)
-        this.CoverObject(this.DefaultDataRange,RangeDataByJson)
-        let DataByJson = this.GenDefaultValue(this.typeName,this.funcName)
-        this.DefaultData = this.ProcessData(DataByJson,this.DefaultData,this.DefaultDataRange)
+    InitDataAndRange() {
+        let RangeDataByJson = this.GenDefaultRange(this.typeName, this.funcName)
+        this.CoverObject(this.DefaultDataRange, RangeDataByJson)
+        let DataByJson = this.GenDefaultValue(this.typeName, this.funcName)
+        this.IsOverRange = false
+        this.DefaultData = this.ProcessData(DataByJson, this.DefaultData, this.DefaultDataRange)
     }
 
     AddData(id, inData) {
         if (this.AllData.has(id))
             return
+        this.IsOverRange = false
         let ruleData = this.ProcessData(inData, this.DefaultData, this.DefaultDataRange)
-        if (ruleData === undefined) {
-            return undefined
-        }
         this.AllData.set(id, ruleData)
         return true
     }
-
+    ExistData(id) {
+        return this.AllData.has(id) ? true : false
+    }
     GetData(id): object {
         if (this.AllData.has(id)) {
             return this.AllData.get(id)
@@ -51,6 +58,7 @@ export class BaseModel {
     RefreshData(id, inData) {
         if (!this.AllData.has(id))
             return
+        this.IsOverRange = false
         let ruleData = this.ProcessData(inData, this.DefaultData, this.DefaultDataRange)
         if (ruleData === undefined) {
             return undefined
@@ -70,6 +78,7 @@ export class BaseModel {
     }
 
     SetSingleData(data) {
+        this.IsOverRange = false
         this.SingleData = this.ProcessData(data, this.DefaultData, this.DefaultDataRange)
     }
 
@@ -99,13 +108,13 @@ export class BaseModel {
                             let outStr: string[] = CurValue.split(",")
                             let SingleNum = outStr.length
                             let index: number = 0
-                            let OneObj:{ [key: string]: any } = {}
+                            let OneObj: { [key: string]: any } = {}
                             if (SingleNum == 2)
-                                OneObj = {X: Number, Y: Number}
+                                OneObj = { X: Number, Y: Number }
                             else if (SingleNum == 3)
-                                OneObj = {X: Number, Y: Number, Z: Number}
+                                OneObj = { X: Number, Y: Number, Z: Number }
                             else if (SingleNum == 4)
-                                OneObj = {X: Number, Y: Number, Z: Number, W: Number}
+                                OneObj = { X: Number, Y: Number, Z: Number, W: Number }
                             for (const _key in OneObj) {
                                 OneObj[_key] = isNaN(Number(outStr[index])) ? 0 : Number(outStr[index])
                                 index++
@@ -151,8 +160,13 @@ export class BaseModel {
                                             CurRangeValue_Min = ruleDateRange[key].Range.min.W
                                             CurRangeValue_Max = ruleDateRange[key].Range.max.W
                                         }
-                                        if (OneObj[_key] < CurRangeValue_Min || OneObj[_key] > CurRangeValue_Max) {
-                                            return undefined
+                                        if (OneObj[_key] < CurRangeValue_Min) {
+                                            this.IsOverRange = true
+                                            OneObj[_key] = CurRangeValue_Min
+                                        }
+                                        else if (OneObj[_key] > CurRangeValue_Max) {
+                                            this.IsOverRange = true
+                                            OneObj[_key] = CurRangeValue_Max
                                         }
                                     }
                                     index++
@@ -161,56 +175,74 @@ export class BaseModel {
                             }
                         } else if (typeof ruleData[key][0] === "object" && typeof curData[key][0] === "object") {
                             for (let i = 0; i < curData[key].length; i++) {
-                                if(ruleData[key].length<i+1 ){
-                                    ruleData[key][i] =PropertyCopy.DeepCopy(ruleData[key][0])
+                                if (ruleData[key].length < i + 1) {
+                                    ruleData[key][i] = PropertyCopy.DeepCopy(ruleData[key][0])
                                 }
                                 if (typeof Object.values(ruleData[key][i])[0] === "object" && typeof Object.values(curData[key][i])[0] === "string") {
                                     ruleData[key][i] = this.ProcessData(curData[key][i], ruleData[key][i], ruleDateRange[key])
-                                    if (ruleData[key][i] === undefined) {
-                                        return undefined
-                                    }
                                 }
                                 else {
-                                    if (ruleDateRange[key] != null) {
-                                        if (curData[key] < ruleDateRange[key].Range.min || curData[key] > ruleDateRange[key].Range.max) {
-                                            return undefined
-                                        }
-                                    }
+                                    // if (ruleDateRange[key] != null) {
+                                    //     if (curData[key] < ruleDateRange[key].Range.min) {
+                                    //         this.IsOverRange = true
+                                    //         curData[key] = ruleDateRange[key].Range.min
+                                    //     }
+                                    //     else if (curData[key] > ruleDateRange[key].Range.max) {
+                                    //         this.IsOverRange = true
+                                    //         curData[key] = ruleDateRange[key].Range.max
+                                    //     }
+                                    // }
                                     ruleData[key] = curData[key]
                                 }
                             }
                         } else {
-                            if (ruleDateRange[key] != null) {
-                                if (curData[key] < ruleDateRange[key].Range.min || curData[key] > ruleDateRange[key].Range.max) {
-                                    return undefined
-                                }
-                            }
+                            // if (ruleDateRange[key] != null) {
+                            //     if (curData[key] < ruleDateRange[key].Range.min) {
+                            //         this.IsOverRange = true
+                            //         curData[key] = ruleDateRange[key].Range.min
+                            //     }
+                            //     else if (curData[key] > ruleDateRange[key].Range.max) {
+                            //         this.IsOverRange = true
+                            //         curData[key] = ruleDateRange[key].Range.max
+                            //     }
+                            // }
                             ruleData[key] = curData[key]
                         }
-                    } else if (typeof ruleData[key] === "object" && typeof curData[key] === "object") {
+                    }
+                    else if (typeof ruleData[key] === "object" && typeof curData[key] === "object") {
                         let a = ruleData[key]
                         if (typeof Object.values(ruleData[key])[0] === "object" && typeof Object.values(curData[key])[0] === "string") {
                             ruleData[key] = this.ProcessData(curData[key], ruleData[key], ruleDateRange[key])
-                            if (ruleData[key] === undefined) {
-                                return undefined
-                            }
                         } else {
-                            if (ruleDateRange[key] != null) {
-                                if (curData[key] < ruleDateRange[key].Range.min || curData[key] > ruleDateRange[key].Range.max) {
-                                    return undefined
-                                }
-                            }
+                            // if (ruleDateRange[key] != null) {
+                            //     if (curData[key] < ruleDateRange[key].Range.min) {
+                            //         this.IsOverRange = true
+                            //         curData[key] = ruleDateRange[key].Range.min
+                            //     }
+                            //     else if (curData[key] > ruleDateRange[key].Range.max) {
+                            //         this.IsOverRange = true
+                            //         curData[key] = ruleDateRange[key].Range.max
+                            //     }
+                            // }
+
                             ruleData[key] = curData[key]
                         }
-                    } else {
+                    }
+                    else {
                         if (ruleDateRange[key] != null) {
-                            if (curData[key] < ruleDateRange[key].Range.min || curData[key] > ruleDateRange[key].Range.max) {
-                                return undefined
+                            if (curData[key] < ruleDateRange[key].Range.min) {
+                                this.IsOverRange = true
+                                curData[key] = ruleDateRange[key].Range.min
+                            }
+                            else if (curData[key] > ruleDateRange[key].Range.max) {
+                                this.IsOverRange = true
+                                curData[key] = ruleDateRange[key].Range.max
                             }
                         }
                         ruleData[key] = curData[key]
                     }
-                } else {
+                }
+                else {
                     if (typeof ruleData[key] === "object" && typeof curData[key] === "string") {
                         let curStr = curData[key] as string
                         let outStr: string[] = curStr.split(",")
@@ -233,8 +265,13 @@ export class BaseModel {
                                     CurRangeValue_Min = ruleDateRange[key].Range.min.W
                                     CurRangeValue_Max = ruleDateRange[key].Range.max.W
                                 }
-                                if (ruleData[key][_key] < CurRangeValue_Min || ruleData[key][_key] > CurRangeValue_Max) {
-                                    return undefined
+                                if (ruleData[key][_key] < CurRangeValue_Min) {
+                                    this.IsOverRange = true
+                                    ruleData[key][_key] = CurRangeValue_Min
+                                }
+                                else if (ruleData[key][_key] > CurRangeValue_Max) {
+                                    this.IsOverRange = true
+                                    ruleData[key][_key] = CurRangeValue_Max
                                 }
                             }
                             index++
@@ -245,6 +282,14 @@ export class BaseModel {
         }
         return ruleData
     }
+
+
+    EditorValueToAPIValue() {
+
+    }
+
+
+
 
     GenDefaultRange(typeName: string, funcName: string) {
         let OutRangeData: { [key: string]: any } = {}
@@ -264,15 +309,15 @@ export class BaseModel {
                 let RangeData: { [key: string]: any } = {}
                 let RangeValue: { [key: string]: any } = {}
 
-                if (item.class == "QInteger") {
+                if (item.class == "Integer") {
                     RangeValue.min = item.range.min
                     RangeValue.max = item.range.max
 
-                } else if (item.class.indexOf("QColor") != -1) {
+                } else if (item.class.indexOf("Color") != -1) {
                     RangeValue.min = { X: 0, Y: 0, Z: 0, W: 0 }
                     RangeValue.max = { X: 1, Y: 1, Z: 1, W: 1 }
 
-                } else if (item.class.indexOf("QVector2") != -1) {
+                } else if (item.class.indexOf("Vector2") != -1) {
                     let valueMin: any = item.range.min
                     valueMin = {}
                     [valueMin.X, valueMin.Y] = this.ConvertToObject(item.range.min)
@@ -282,7 +327,7 @@ export class BaseModel {
                     valueMax = {}
                     [valueMax.X, valueMax.Y] = this.ConvertToObject(item.range.max)
                     RangeValue.max = this.ArraytoVector(valueMax)
-                } else if (item.class.indexOf("QVector3") != -1) {
+                } else if (item.class.indexOf("Vector3") != -1) {
                     let valueMin: any = item.range.min
                     valueMin = {}
                     [valueMin.X, valueMin.Y, valueMin.Z] = this.ConvertToObject(item.range.min)
@@ -294,7 +339,7 @@ export class BaseModel {
                     [valueMax.X, valueMax.Y, valueMax.Z] = this.ConvertToObject(item.range.max)
                     RangeValue.max = this.ArraytoVector(valueMax)
 
-                } else if (item.class.indexOf("QVector4") != -1) {
+                } else if (item.class.indexOf("Vector4") != -1) {
                     let valueMin: any = item.range.min
                     valueMin = {}
                     [valueMin.X, valueMin.Y, valueMin.Z, valueMin.W] = this.ConvertToObject(item.range.min)
@@ -334,8 +379,11 @@ export class BaseModel {
         return OutRangeData
     }
     ReadConfigData(): [any, any] {
-        let DevPath = ApiListConfig_Dev
-        let UserPath = ApiListConfig_User
+        let ProjectDir = GetSystem(ProjectSystem).GetProjectDir()
+        let absolutePathDev = path.join(ProjectDir,ApiListConfig_Dev)
+        let absolutePathUser = path.join(ProjectDir,ApiListConfig_User)
+        let DevPath = absolutePathDev
+        let UserPath = absolutePathUser
         let devData = this.JsonToObject(DevPath)
         if (devData == null) {
             console.error(`config data [${DevPath}] is null`)
@@ -350,7 +398,12 @@ export class BaseModel {
     }
 
     JsonToObject(file: string): any {
-        return require(file)
+        let Str = UE.OpenZIFrameworkLibrary.ReadFile(file)
+        if (Str == "") {
+            return null
+        }else{
+            return JSON.parse(Str)
+        }
     }
 
     ConvertToObject(str: string): any {
