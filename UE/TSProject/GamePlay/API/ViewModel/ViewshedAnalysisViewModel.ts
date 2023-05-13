@@ -12,8 +12,16 @@ import {ViewshedAnalysisModel} from "../Model/ViewshedAnalysisModel";
 export class ViewshedAnalysisViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new ViewshedAnalysisModel()
+        this.BaseModel = new ViewshedAnalysisModel()
         this._OBJClass = makeUClass(ViewshedAnalysisView)
-	    this._Type = "ViewshedAnalysis"
+	    this.Type = "ViewshedAnalysis"
+        this.Birthplace = "Scene"
+    }
+
+    EndDrawing(id){
+        let curObj = this.OBJMaps.get(id)
+        if(curObj){
+            curObj.EndDrawing()
+        }
     }
 }

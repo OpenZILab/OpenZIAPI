@@ -6,8 +6,9 @@
 
 import * as UE from "ue"
 import { ObserverPawnView } from "../View/ObserverPawnView"
+
 export function GetObserverPawn_UE(){
-    let World = UE.WorldFactoryHelpFuntion.GetCurrentWorld()
+    let World = UE.OpenZIFrameworkLibrary.GetCurrentWorld()
     let ObserverPawn = UE.GameplayStatics.GetPlayerPawn(World,0) as ObserverPawnView
     if(ObserverPawn !== null)
     {

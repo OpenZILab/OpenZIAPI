@@ -14,6 +14,13 @@ export class AlarmAnchorModel extends BaseModel {
             GISType: 0,
             coordinates: {X: 104.06168732191, Y: 30.643138179075, Z: 1.5},
             checkFloor: false,
+            isAutoScale: true,
+            scale:1,
+            customStyle: false,
+            meshStyle:"",
+            focusDistance: 100,
+            sendScreemCoordinates: false,
+            tickTime: 0
         }
         this.DefaultDataRange = {
             GISType: {Range: {"min": 0, "max":3}},

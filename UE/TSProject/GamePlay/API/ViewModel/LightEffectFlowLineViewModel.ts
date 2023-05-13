@@ -12,8 +12,9 @@ import {LightEffectFlowLineView} from "../View/LightEffectFlowLineView";
 export class LightEffectFlowLineViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new LightEffectFlowLineModel()
+        this.BaseModel = new LightEffectFlowLineModel()
         this._OBJClass = makeUClass(LightEffectFlowLineView)
-        this._Type = "LightEffectFlowLine"
+        this.Type = "LightEffectFlowLine"
+        this.Birthplace = "Scene"
     }
 }

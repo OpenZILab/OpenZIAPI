@@ -5,9 +5,9 @@
 ///
 
 import * as UE from 'ue'
-import {Game, NewArray, NewMap, Vector2D} from "ue";
-import {$ref, $unref, argv, blueprint} from "puerts";
-import {BaseView} from "../../../System/API/View/BaseView";
+import { NewArray, NewMap, Vector2D } from "ue";
+import { $ref, $unref } from "puerts";
+import { BaseView } from "../../../System/API/View/BaseView";
 
 export class ColumnarMapView extends BaseView {
     //@C++
@@ -90,6 +90,10 @@ export class ColumnarMapView extends BaseView {
     RefreshView(jsonData): string {
         this.ClearAllData()
         this.data = jsonData.data
+        if (this.data.pointsInfoList.length == 0){
+            return "success"
+        }
+        this.scaleXY = this.data.scaleXY
         this.CoorConvertToUECoor()
         this.CalculateColumnarMapSize()
         this.DrawColumnar()
@@ -98,7 +102,7 @@ export class ColumnarMapView extends BaseView {
 
     CoorConvertToUECoor(): void {
         let GeographicPos = new UE.GeographicCoordinates(this.data.pointsInfoList[1].X, this.data.pointsInfoList[1].Y, 0)
-        let CurEngineLocation = $ref(new UE.Vector(0,0,0))
+        let CurEngineLocation = $ref(new UE.Vector(0, 0, 0))
         this.CoordinateConverterMgr.GeographicToEngine(this.data.GISType, GeographicPos, CurEngineLocation)
         let EngineLocation = $unref(CurEngineLocation)
         this.value_max_x = EngineLocation.X
@@ -107,7 +111,7 @@ export class ColumnarMapView extends BaseView {
         this.value_min_y = EngineLocation.Y
         for (let key = 0; key < this.data.pointsInfoList.length; key++) {
             let GeographicPos1 = new UE.GeographicCoordinates(this.data.pointsInfoList[key].X, this.data.pointsInfoList[key].Y, 0)
-            let CurEngineLocation1 = $ref(new UE.Vector(0,0,0))
+            let CurEngineLocation1 = $ref(new UE.Vector(0, 0, 0))
             this.CoordinateConverterMgr.GeographicToEngine(this.data.GISType, GeographicPos1, CurEngineLocation1)
             let EngineLocation1 = $unref(CurEngineLocation1)
             if (this.value_max_x < EngineLocation1.X) {
@@ -128,51 +132,57 @@ export class ColumnarMapView extends BaseView {
     CalculateColumnarMapSize(): void {
         let mapmaxX = 0
         if (this.value_max_x >= 0) {
-            mapmaxX = Math.floor(this.value_max_x / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            mapmaxX = Math.floor(this.value_max_x / this.scaleXY) * this.scaleXY + this.scaleXY
         } else {
             let a = (-1) * this.value_max_x
-            let b = Math.floor(a / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            let b = Math.floor(a / this.scaleXY) * this.scaleXY + this.scaleXY
             mapmaxX = (-1) * b
         }
         let mapminX = 0
         if (this.value_min_x >= 0) {
-            mapminX = Math.floor(this.value_min_x / this.data.scaleXY) * this.data.scaleXY - this.data.scaleXY
+            mapminX = Math.floor(this.value_min_x / this.scaleXY) * this.scaleXY - this.scaleXY
         } else {
             let a = (-1) * this.value_min_x
-            let b = Math.floor(a / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            let b = Math.floor(a / this.scaleXY) * this.scaleXY + this.scaleXY
             mapminX = (-1) * b
         }
         let mapmaxY = 0
         if (this.value_max_y >= 0) {
-            mapmaxY = Math.floor(this.value_max_y / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            mapmaxY = Math.floor(this.value_max_y / this.scaleXY) * this.scaleXY + this.scaleXY
         } else {
             let a = (-1) * this.value_max_y
-            let b = Math.floor(a / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            let b = Math.floor(a / this.scaleXY) * this.scaleXY + this.scaleXY
             mapmaxY = (-1) * b
         }
         let mapminY = 0
         if (this.value_min_y >= 0) {
-            mapminY = Math.floor(this.value_min_y / this.data.scaleXY) * this.data.scaleXY - this.data.scaleXY
+            mapminY = Math.floor(this.value_min_y / this.scaleXY) * this.scaleXY - this.scaleXY
         } else {
             let a = (-1) * this.value_min_y
-            let b = Math.floor(a / this.data.scaleXY) * this.data.scaleXY + this.data.scaleXY
+            let b = Math.floor(a / this.scaleXY) * this.scaleXY + this.scaleXY
             mapminY = (-1) * b
         }
         let size_x = mapmaxX - mapminX
         let size_y = mapmaxY - mapminY
-        this.scaleXY = this.data.scaleXY
-        this.count_x = Math.floor(size_x / this.data.scaleXY)
-        this.count_y = Math.floor(size_y / this.data.scaleXY)
-        this.CountDetection(size_x, size_y)
-        this.first_x = mapminX + this.scaleXY / 2
-        this.first_y = mapminY + this.scaleXY / 2
-        this.last_x = mapmaxX - this.scaleXY / 2
-        this.last_y = mapmaxY - this.scaleXY / 2
-        let mapcenterx = (this.first_x + this.last_x) / 2
-        let mapcentery = (this.first_y + this.last_y) / 2
-        let CenterLoc = new UE.Vector(mapcenterx, mapcentery, this.data.mapHeight)
-        let FHitResult = $ref(new UE.HitResult)
-        this.K2_SetActorLocation(CenterLoc, false, FHitResult, false)
+        this.count_x = Math.floor(size_x / this.scaleXY)
+        this.count_y = Math.floor(size_y / this.scaleXY)
+        let detection = this.CountDetection(size_x, size_y)
+        if (!detection) {
+            this.CalculateColumnarMapSize()
+        } else {
+            this.first_x = mapminX + this.scaleXY / 2
+            this.first_y = mapminY + this.scaleXY / 2
+            this.last_x = mapmaxX - this.scaleXY / 2
+            this.last_y = mapmaxY - this.scaleXY / 2
+            let mapcenterx = (this.first_x + this.last_x) / 2
+            let mapcentery = (this.first_y + this.last_y) / 2
+            let CenterLoc = new UE.Vector(mapcenterx, mapcentery, this.data.mapHeight)
+            let FHitResult = $ref(new UE.HitResult)
+            this.K2_SetActorLocation(CenterLoc, false, FHitResult, false)
+            let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0, 0))
+            this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CenterLoc, originCoordinate)
+            this.CoordinatesToRelative(this.data.pointsInfoList, { X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: 0 })
+        }
     }
 
     DrawColumnar(): void {
@@ -265,8 +275,7 @@ export class ColumnarMapView extends BaseView {
                 curwidget.DisText.SetColorAndOpacity(new UE.SlateColor(new UE.LinearColor(this.data.NumberColor.X, this.data.NumberColor.Y, this.data.NumberColor.Z, this.data.NumberColor.W), UE.ESlateColorStylingMode.UseColor_Specified))
                 this.Widget.Add(curUMG)
             }
-        }
-        else{
+        } else {
             for (let i = 0; i < this.Widget.Num(); i++) {
                 this.Widget.Get(i).K2_DestroyComponent(this.Widget.Get(i))
             }
@@ -274,13 +283,17 @@ export class ColumnarMapView extends BaseView {
         }
     }
 
-    CountDetection(width, height): void {
+    CountDetection(width, height): boolean {
         if (this.count_x * this.count_y > 2000000) {
             console.error("The number of cubes currently exceeds 2 million,and the scaling ratio will be doubled !")
             this.scaleXY = this.scaleXY * 2
             this.count_x = Math.floor(width / this.scaleXY)
             this.count_y = Math.floor(height / this.scaleXY)
             this.CountDetection(width, height)
+            return false
+        }
+        else {
+            return true
         }
     }
 }

@@ -22,7 +22,8 @@ export class Cesium3DTilesetView extends UE.Cesium3DTileset {
 
     ReceiveBeginPlay(): void {
         this.PolygonWire = UE.NewObject(UE.CesiumPolygonWire.StaticClass(),this,"PolygonWire") as UE.CesiumPolygonWire
-        UE.WorldFactoryHelpFuntion.AddOwnedComponent(this,this.PolygonWire)
+
+        UE.OpenZIFrameworkLibrary.AddOwnedComponent(this,this.PolygonWire)
         let CreditsWidgets = $ref(UE.NewArray(UE.UserWidget))
         UE.WidgetBlueprintLibrary.GetAllWidgetsOfClass(this, CreditsWidgets, UE.ScreenCreditsWidget.StaticClass(), false)
     }

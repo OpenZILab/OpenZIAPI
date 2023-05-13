@@ -62,6 +62,7 @@ export class HeatMapView extends BaseView {
     }
 
     ReceiveBeginPlay(): void {
+        super.ReceiveBeginPlay()
         this.Init()
     }
 
@@ -81,6 +82,9 @@ export class HeatMapView extends BaseView {
     RefreshView(jsonData): string {
         this.ClearAllData()
         this.data = jsonData.data
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
         this.CoorConvertToUECoor()
         let Location = this.K2_GetActorLocation()
         Location.Z = this.data.mapHeight
@@ -91,6 +95,9 @@ export class HeatMapView extends BaseView {
         let CenterLoc = new UE.Vector((this.max_x + this.min_x) * 0.5, (this.max_y + this.min_y) * 0.5, this.data.mapHeight)
         let FHitResult2 = $ref(new UE.HitResult)
         this.K2_SetActorLocation(CenterLoc, false, FHitResult2, false)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CenterLoc, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
         this.HeatMap.SetWorldScale3D(new UE.Vector(this.CanvasScale, this.CanvasScale, 1))
         return "success"
     }

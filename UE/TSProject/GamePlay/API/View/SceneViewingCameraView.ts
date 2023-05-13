@@ -28,6 +28,7 @@ export class SceneViewingCameraView extends BaseView {
     Onwer: SceneViewingView
     PointSettingUI: UE.OpenZIAPI.API.View.Roaming.UMG_CameraRoamingPointSetting.UMG_CameraRoamingPointSetting_C
     IsFirstSelect: boolean
+    IsAdding:boolean
 
     Constructor(): void {
         this.PrimaryActorTick.bCanEverTick = true;
@@ -44,16 +45,17 @@ export class SceneViewingCameraView extends BaseView {
         this.ATangent = undefined
         this.LTangent = undefined
         this.IsFirstSelect = true
+        this.IsAdding = false
 
     }
-
+    ChangeTransfrom:any
     ReceiveBeginPlay(): void {
         super.ReceiveBeginPlay()
         this.Init()
-        UE.AxesToolSubsystem.Get().OnTransfromChanged.Add((InTransform: UE.Transform) => {
-            InTransform
+        this.ChangeTransfrom=(InTransform: UE.Transform)=> {
             this.RefreshTransform()
-        })
+        }
+        UE.AxesToolSubsystem.Get().OnTransfromChanged.Add(this.ChangeTransfrom)
     }
 
     ReceiveTick(DeltaSeconds: number): void {
@@ -64,16 +66,24 @@ export class SceneViewingCameraView extends BaseView {
         this.RootUI = this.UIRoot.GetWidget() as SceneViewingUIView
         this.PointSettingUI = this.RootUI.UMG_CameraRoamingPointSetting
         this.RootUI.Select.OnClicked.Add(() => {
-            this.OnClickedSelect()
+            if (!this.IsAdding){
+                this.OnClickedSelect()
+            }
         })
         this.RootUI.Settings.OnClicked.Add(() => {
-            this.OnClickedSettings()
+            if (!this.IsAdding){
+                this.OnClickedSettings()
+            }
         })
         this.RootUI.Delete.OnClicked.Add(() => {
-            this.OnClickedDelete()
+            if (!this.IsAdding){
+                this.OnClickedDelete()
+            }
         })
         this.PointSettingUI.Apply.OnClicked.Add(() => {
-            this.ApplyClicked()
+            if (!this.IsAdding){
+                this.ApplyClicked()
+            }
         })
         this.PointSettingUI.SendMsg.Add((index, position,rotation, arrive_tangent, leave_tangent, point_type) => {
             this.UpdateCameraInfo(index, position, rotation , arrive_tangent, leave_tangent, point_type)
@@ -112,7 +122,9 @@ export class SceneViewingCameraView extends BaseView {
         this.ATangent = this.PointSettingUI.ArriveTangent
         this.LTangent = this.PointSettingUI.LeaveTangent
         this.SplinePointType = this.PointSettingUI.PointType
-        this.Onwer.UpdatePonitInfoOfIndex(this.Index)
+        if (this.Onwer) {
+            this.Onwer.UpdatePonitInfoOfIndex(this.Index)
+        }
     }
 
     RefreshTransform() {
@@ -133,6 +145,9 @@ export class SceneViewingCameraView extends BaseView {
 
     ReceiveEndPlay(EndPlayReason: UE.EEndPlayReason) {
         super.ReceiveEndPlay(EndPlayReason);
+        this.Owner = undefined
+        this.RootUI = undefined
+        UE.AxesToolSubsystem.Get().OnTransfromChanged.Remove(this.ChangeTransfrom)
     }
 
     RefreshView(jsonData): string {

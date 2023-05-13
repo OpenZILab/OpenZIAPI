@@ -12,8 +12,9 @@ import {ScreenCoordinatesView} from "../View/ScreenCoordinatesView";
 export class ScreenCoordinatesViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new ScreenCoordinatesModel()
+        this.BaseModel = new ScreenCoordinatesModel()
         this._OBJClass = makeUClass(ScreenCoordinatesView)
-        this._Type = "ScreenCoordinates"
+        this.Type = "ScreenCoordinates"
+        this.Birthplace = "Scene"
     }
 }

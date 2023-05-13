@@ -40,13 +40,32 @@ import { DynamicWeatherViewModel } from "../../GamePlay/API/ViewModel/DynamicWea
 import { OriginDestinationLineViewModel } from "../../GamePlay/API/ViewModel/OriginDestinationLineViewModel";
 import { OpticalFlowLineViewModel } from "../../GamePlay/API/ViewModel/OpticalFlowLineViewModel";
 import { LightEffectFlowLineViewModel } from "../../GamePlay/API/ViewModel/LightEffectFlowLineViewModel"
+import { PackCallBacKMessage } from "./IHandle/IAPIMessageHandle"
+import { WebSocketServer } from "./Handle/WebSocketServer"
+import { ColumnarMapTwoViewModel } from "../../GamePlay/API/ViewModel/ColumnarMapTwoViewModel";
+import { MessageCenter } from "../Core/NotificationCore/MessageManager"
+import { NotificationLists } from "../Core/NotificationCore/NotificationLists"
+
+import * as UE from "ue"
 
 interface TType<T> extends Function {
     new(...args: any[]): T
 }
+const DrawClass = ["DrawLine", "DrawPoint", "DrawPlane", "MeasureArea", "MeasureDistance", "MeasureCoordinates"]
+
+export enum ApiType {
+    Scene,
+    Coverage,
+    Setting,
+    Control
+}
 
 export class APIViewModelSystem extends Sigleton {
     ViewModels: Array<BaseViewModel> = new Array<BaseViewModel>()
+
+    //draw mutex
+    bDrawingType: string = ""
+    bDrawingId: string = ""
 
     static GetInstance(): APIViewModelSystem {
         return super.TakeInstance(APIViewModelSystem)
@@ -58,6 +77,7 @@ export class APIViewModelSystem extends Sigleton {
         this.RegisterLink(TrenchingViewModel)
         this.RegisterLink(CesiumRasterOverlayViewModel)
         this.RegisterLink(CesiumTerrainViewModel)
+        // this.RegisterLink(CesiumSunViewModel)
 
         //Game
         this.RegisterLink(CoodinateConverterViewModel)
@@ -86,6 +106,13 @@ export class APIViewModelSystem extends Sigleton {
         this.RegisterLink(OriginDestinationLineViewModel)
         this.RegisterLink(OpticalFlowLineViewModel)
         this.RegisterLink(LightEffectFlowLineViewModel)
+        this.RegisterLink(ColumnarMapTwoViewModel)
+        let DigitalRequire = require("../../GamePlay/API/ViewModel/DigitalTwinViewModel")
+        this.RegisterLink(DigitalRequire.DigitalTwinViewModel)
+        let PrefabRequire = require("../../GamePlay/API/ViewModel/PrefabViewModel")
+        this.RegisterLink(PrefabRequire.PrefabViewModel)
+        this.RegisterLink(ObserverPawnViewModel)
+
     }
 
     RegisterLink<T extends BaseViewModel>(Class: TType<T>) {
@@ -109,12 +136,100 @@ export class APIViewModelSystem extends Sigleton {
     GetAllViewModel() {
         return this.ViewModels
     }
+
+    ClearAllView(msg) {
+        let result = ""
+
+        if (this.ViewModels.length > 0) {
+            this.ViewModels.forEach(item => {
+                if (item.GetType() != "DynamicWeather") {
+                    if (item.OBJMaps.size > 0) {
+                        let ids: string[] = []
+                        item.OBJMaps.forEach((value, key) => {
+                            if (value && value instanceof UE.Actor) {
+                                let SceneNodeRequire = require("../Project/Scene/SceneNodeUtil")
+                                let Node = SceneNodeRequire.NodeHelper.FindNodeByActor(value)
+                                if(!Node) return
+                                if (Node && Node.GetTags().includes("ChildPrefab") || Node.GetParent().GetNodeType() == "Twin" || Node.GetTags().includes("ParentPrefab")) {
+                                }
+                                else {
+                                    ids.push(key)
+                                }
+                            }
+                        })
+                        item.ExecuteDelete({ data: { ids } })
+
+                    }
+                }
+            })
+            let require_Engine = require("../Engine/QEngine")
+            let require_Scene = require("../Project/Scene/SceneSystem")
+
+            require_Engine.GetSystem(require_Scene.SceneSystem).GetCurrentScene().GetNodeByName("APIAsset")?.SetChildNodes([])
+
+            MessageCenter.Execute(NotificationLists.SCENE.ON_SCENETREE_CHANGED)
+            result = "success"
+        } else {
+            result = "No content clearing"
+        }
+        msg.data.result = result
+        let message = PackCallBacKMessage(msg, msg.data)
+        WebSocketServer.GetInstance().OnSendWebMessage(message)
+
+    }
+    ClearViewByType(msg) {
+        let result = ""
+        if (this.ViewModels.length > 0) {
+            this.ViewModels.forEach(item => {
+                let type = null
+                if (typeof (msg.data.apiType) == "string") {
+                    type = msg.data.apiType
+                } else if (typeof (msg.data.apiType) == "number") {
+                    type = ApiType[msg.data.apiType]
+                }
+                if (item.Birthplace == type && item.OBJMaps.size > 0) {
+                    // msg.classDef = item.GetType()
+                    // msg.funcDef = "ClearAll"
+                    result = item.ExecuteClear(msg)
+                }
+            })
+            result = "success"
+        } else {
+            result = "No content clearing"
+        }
+        msg.data.result = result
+        let message = PackCallBacKMessage(msg, msg.data)
+        WebSocketServer.GetInstance().OnSendWebMessage(message)
+
+    }
+
+
+
+    RegisterDrawFunc(viewModelType, endDrawId) {
+        this.bDrawingId = endDrawId
+        this.bDrawingType = viewModelType
+    }
+    UnregisterDrawFunc() {
+        this.bDrawingId = ""
+        this.bDrawingType = ""
+    }
+    EndDrawing() {
+        if (DrawClass.includes(this.bDrawingType)) {
+            if (this.bDrawingId != "") {
+                let CurViewModel = this.GetViewModelByType(this.bDrawingType)
+                if (CurViewModel && this.bDrawingId != "") {
+                    CurViewModel.EndDrawing(this.bDrawingId)
+                    this.UnregisterDrawFunc()
+                }
+            }
+        }
+    }
 }
 
-export function GetViewModelByType(type:string){
+export function GetViewModelByType(type: string) {
     return APIViewModelSystem.GetInstance().GetViewModelByType(type)
 }
 
 export function GetViewModel<T extends BaseViewModel>(TClass: TType<T>): T {
-    return APIViewModelSystem.GetInstance().GetViewModel(TClass);
+    return APIViewModelSystem.GetInstance().GetViewModel(TClass) as T;
 }

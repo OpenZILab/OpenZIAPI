@@ -10,8 +10,8 @@ import {Widget} from "../Core/Widget";
 import * as WebPageViewModel from "../../GamePlay/API/ViewModel/WebPageViewModel"
 import * as IWebSocketHandle from "../API/IHandle/IWebSocketHandle"
 
-export function StartWebSocketServer(url): void {
-    IWebSocketHandle.StartServer(url)
+export function StartWebSocketServer(bServer,port,url): void {
+    IWebSocketHandle.StartServer(bServer,port,url)
 }
 
 export function CloseWebSocketServer(code,reason): void {

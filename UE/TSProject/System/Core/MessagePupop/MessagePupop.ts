@@ -6,14 +6,14 @@
 
 import { StartMessagePupop } from "../../API/IHandle/IMessagePupopHandle";
 import { EMessageType } from "../../API/Handle/MessagePupopHandle";
-import { NotificationStyle } from "../../API/Handle/MessageNotificationHandle ";
+import { NotificationStyle } from "../../API/Handle/MessageNotificationHandle";
 import * as UE from "ue"
 
 export class MessagePopup {
 
    private static RegisterWidget(widgetPath:string){
         let widgetClass = UE.Class.Load(widgetPath);
-        let Widget = UE.WidgetBlueprintLibrary.Create(UE.WorldFactoryHelpFuntion.GetCurrentWorld(), widgetClass, null);
+        let Widget = UE.WidgetBlueprintLibrary.Create(UE.OpenZIFrameworkLibrary.GetCurrentWorld(), widgetClass, null);
         return  Widget
     }
 
@@ -21,7 +21,7 @@ export class MessagePopup {
         let MessagePupop = StartMessagePupop()
         MessagePupop.SetCallBackOK(fCallbackOK)
         MessagePupop.BindCallbackFuncions()
-     
+
         MessagePupop.OpenMessagePupop(EMessageType.Ok, Message, title, 500, widget)
     }
     static ShowMessage_YesNo(Message: string, fCallbackYes?: Function, fCallbackNo?: Function, title?: string, widget?: any) {
@@ -74,20 +74,31 @@ export class MessagePopup {
         MessagePupop.BindCallbackFuncions()
         MessagePupop.OpenMessagePupop(EMessageType.YesNoYesAllNoAllCancel, Message, title, 500, widget)
     }
+    static ShowMessage_SaveContinueCancel(Message: string, fCallbackSave?: Function, fCallbackContinueWithoutSaving?: Function, fCallbackCancel?: Function, title?: string, widget?: any) {
+        let MessagePupop = StartMessagePupop()
+        MessagePupop.SetCallBackSave(fCallbackSave)
+        MessagePupop.SetCallBackContinueWithoutSaving(fCallbackContinueWithoutSaving)
+        MessagePupop.SetCallBackCancel(fCallbackCancel)
+        MessagePupop.BindCallbackFuncions()
+        MessagePupop.OpenMessagePupop(EMessageType.SaveContinueCancel, Message, title, 500, widget)
+    }
 
     static ShowNotification(Message: string, Style?: NotificationStyle) {
         let CurStyle = Style ?? new NotificationStyle()
-
-        let NotifiItem = UE.MessagePopupSubsystem.Get().ShowNotifiTips(Message,
-            CurStyle.NotifiFrameStyle.SubText,
-            CurStyle.NotifiFrameStyle.DurTime,
-            CurStyle.NotifiFrameStyle.FrameWidth,
-            CurStyle.NotifiFrameStyle.bAutoRelease,
-            CurStyle.NotifiButtons,
-            CurStyle.CheckBox,
-            CurStyle.CustomWidget)
-        NotifiItem.SetHyperlink(CurStyle.HyperLink)
-        return NotifiItem
+        if(UE.MessagePopupSubsystem.Get()){
+            let NotifiItem = UE.MessagePopupSubsystem.Get().ShowNotifiTips(Message,
+                CurStyle.NotifiFrameStyle.SubText,
+                CurStyle.NotifiFrameStyle.DurTime,
+                CurStyle.NotifiFrameStyle.FrameWidth,
+                CurStyle.NotifiFrameStyle.bAutoRelease,
+                CurStyle.NotifiButtons,
+                CurStyle.CheckBox,
+                CurStyle.CustomWidget)
+            NotifiItem.SetHyperlink(CurStyle.HyperLink)
+            return NotifiItem
+        }else{
+            return null
+        }
     }
 
     static ShowProgressTips(InAmountOfWork: number, Message: string, bCircle: boolean, bShowCancelButton: boolean) {

@@ -8,7 +8,11 @@ import * as UE from 'ue'
 import {NewArray} from "ue";
 import {BaseView} from "../../../System/API/View/BaseView";
 import {$ref, $unref} from "puerts";
-import {EventDispatcher} from "../../../System/Core/EventDispatcher";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
 
 export class TrafficCongestionMapView extends BaseView {
 
@@ -32,6 +36,7 @@ export class TrafficCongestionMapView extends BaseView {
         this.RootComponent = this.Root
         this.Spline = this.CreateDefaultSubobjectGeneric<UE.SplineComponent>("Spline", UE.SplineComponent.StaticClass())
         this.Spline.SetupAttachment(this.Root, "Spline")
+        this.Spline.SetMobility(UE.EComponentMobility.Movable)
         this.PointsType = NewArray(UE.BuiltinString)
         this.AllMesh = NewArray(UE.SplineMeshComponent)
         this.LastPoint = new UE.Vector(0,0,0)
@@ -48,7 +53,7 @@ export class TrafficCongestionMapView extends BaseView {
 
     ReceiveBeginPlay(): void {
         this.Init()
-        EventDispatcher.GetInstance().Add(this,this.SetScale,"CameraLocation")
+        MessageCenter.Add(this,this.SetScale,NotificationLists.API.GET_CAMERA_LOCATION)
     }
 
     private  Init(): void {
@@ -56,16 +61,19 @@ export class TrafficCongestionMapView extends BaseView {
     }
 
     ReceiveEndPlay(EndPlayReason): void{
-        EventDispatcher.GetInstance().Remove(this,"CameraLocation")
+        MessageCenter.Remove(this,NotificationLists.API.GET_CAMERA_LOCATION)
     }
 
     ClearAllData(): void{
         this.PointsType.Empty()
         for (let index = 0; index < this.AllMesh.Num(); index++){
             this.AllMesh.Get(index).K2_DestroyComponent(this)
+            // UE.OpenZIFrameworkLibrary.RemoveOwnedComponent(this,this.AllMesh.Get(index))
         }
         this.AllMesh.Empty()
         this.Spline.ClearSplinePoints(true)
+        this.LastPoint = new UE.Vector(0,0,0)
+        this.EndScale = new  UE.Vector2D(0,0)
     }
 
 
@@ -73,11 +81,38 @@ export class TrafficCongestionMapView extends BaseView {
         this.data = jsonData.data
         this.ColorList =  this.data.statusColorList
         this.ClearAllData()
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
+        if(this.data.coordinatesList.length !== this.data.statusList.length ){
+            let NotifiItem
+            let NotifiStyle = new NotificationStyle()
+            NotifiStyle.RegisterFrameStyle(MessageTips.API.TrafficCongestion, 600, 3, false)
+            NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+            NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+            NotifiItem.ExpireAndFadeout()
+
+            return "success"
+        }
         this.CoorConvertToUECoor()
         return "success"
     }
 
     CoorConvertToUECoor(): void{
+        let CurVector = new UE.Vector(0,0,0)
+        for (let key = 0; key < this.data.coordinatesList.length; key++){
+            let GeographicPos = new UE.GeographicCoordinates(this.data.coordinatesList[key].X, this.data.coordinatesList[key].Y, this.data.coordinatesList[key].Z)
+            let CurEngineLocation = $ref(new UE.Vector(0,0,0))
+            this.CoordinateConverterMgr.GeographicToEngine(this.data.GISType, GeographicPos, CurEngineLocation)
+            let uecoor = $unref(CurEngineLocation)
+            CurVector = new UE.Vector(CurVector.X + uecoor.X,CurVector.Y + uecoor.Y,CurVector.Z + uecoor.Z)
+        }
+        CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length,CurVector.Z / this.data.coordinatesList.length)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
+        let FHitResult = $ref(new UE.HitResult)
+        this.K2_SetActorLocation(CurVector, false, FHitResult, false)
         for (let key = 0; key < this.data.coordinatesList.length; key++){
             let GeographicPos = new UE.GeographicCoordinates(this.data.coordinatesList[key].X, this.data.coordinatesList[key].Y, this.data.coordinatesList[key].Z)
             let CurEngineLocation = $ref(new UE.Vector(0,0,0))
@@ -87,15 +122,16 @@ export class TrafficCongestionMapView extends BaseView {
             if (this.data.statusList[key] !== undefined){
                 status = this.data.statusList[key]
             }
-            this.AddPoint(uecoor,status,1)
+            this.AddPoint(uecoor,status,1,key)
         }
         this.CreateSplineMesh(this.data.lineWidth)
     }
 
-    AddPoint(Position,ItemType,ErrorTolerance): void{
+    AddPoint(Position,ItemType,ErrorTolerance,index): void{
         let istrue = UE.KismetMathLibrary.NotEqual_VectorVector(Position,this.LastPoint,ErrorTolerance)
         if (istrue === true){
-            this.Spline.AddSplinePoint(Position,UE.ESplineCoordinateSpace.World,false)
+            // this.Spline.AddSplinePoint(Position,UE.ESplineCoordinateSpace.Local,false)
+            this.Spline.AddSplinePointAtIndex(Position,index,UE.ESplineCoordinateSpace.World,false)
             this.PointsType.Add(ItemType)
             this.LastPoint = Position
         }
@@ -118,12 +154,12 @@ export class TrafficCongestionMapView extends BaseView {
             SplineMeshComponent.SetCollisionEnabled(UE.ECollisionEnabled.NoCollision)
             let poi_1_loc_ref = $ref(new UE.Vector)
             let poi_1_tangent_ref = $ref(new UE.Vector)
-            this.Spline.GetLocationAndTangentAtSplinePoint(index,poi_1_loc_ref,poi_1_tangent_ref,UE.ESplineCoordinateSpace.Local)
+            this.Spline.GetLocationAndTangentAtSplinePoint(index,poi_1_loc_ref,poi_1_tangent_ref,UE.ESplineCoordinateSpace.World)
             let poi_1_loc = $unref(poi_1_loc_ref)
             let poi_1_tangent = $unref(poi_1_tangent_ref)
             let poi_2_loc_ref = $ref(new UE.Vector)
             let poi_2_tangent_ref = $ref(new UE.Vector)
-            this.Spline.GetLocationAndTangentAtSplinePoint(index + 1 ,poi_2_loc_ref,poi_2_tangent_ref,UE.ESplineCoordinateSpace.Local)
+            this.Spline.GetLocationAndTangentAtSplinePoint(index + 1 ,poi_2_loc_ref,poi_2_tangent_ref,UE.ESplineCoordinateSpace.World)
             let poi_2_loc = $unref(poi_2_loc_ref)
             let poi_2_tangent = $unref(poi_2_tangent_ref)
             this.Spline.SetSplinePointType(index,UE.ESplinePointType.CurveCustomTangent,false)
@@ -133,6 +169,8 @@ export class TrafficCongestionMapView extends BaseView {
             SplineMeshComponent.SetEndScale(endscale,false)
             SplineMeshComponent.SetStartScale(endscale,true)
             let MI = SplineMeshComponent.CreateDynamicMaterialInstance(0,Material_1,"None")
+            SplineMeshComponent.K2_AttachToComponent(this.K2_GetRootComponent(), name, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, true)
+            // UE.OpenZIFrameworkLibrary.AddOwnedComponent(this,SplineMeshComponent)
             let tempindex = this.PointsType.Get(index)
             let tempValue
             if(this.ColorList instanceof Map ){

@@ -6,8 +6,8 @@
 
 import {WebSocketServer} from "../Handle/WebSocketServer"
 
-export function StartServer(url){
-    WebSocketServer.GetInstance().StartServer(url)
+export function StartServer(bServer,port,url){
+    WebSocketServer.GetInstance().StartServer(bServer,port,url)
 }
 
 export function CloseServer(code,reason){

@@ -4,5 +4,5 @@
 /// DateTime: 2022/10/10 18:34
 ///
 
-export const CSVConfigFilePath = "CsvFile/LevelInfo.Csv"
-export const SettingConfigFilePath = "../../Script/Config/Config.json"
+export const CSVConfigFilePath = "Config/CsvFile/LevelInfo.Csv"
+export const SettingConfigFilePath = "UserSettings/启动配置.json"

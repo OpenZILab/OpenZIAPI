@@ -10,6 +10,8 @@ import { Cesium3DTilesetModel } from "../Model/Cesium3DTilesetModel";
 import { Cesium3DTilesetView } from "../View/Cesium3DTilesetView";
 import { PackCallBacKMessage } from "../../../../System/API/IHandle/IAPIMessageHandle";
 import { WebSocketServer } from "../../../../System/API/Handle/WebSocketServer";
+import {MessageCenter} from "../../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../../System/Core/NotificationCore/NotificationLists";
 
 export class CesiumTerrainViewModel extends BaseViewModel{
 
@@ -17,31 +19,40 @@ export class CesiumTerrainViewModel extends BaseViewModel{
 
     constructor() {
         super()
-        this._BaseModel = new Cesium3DTilesetModel()
+        this.BaseModel = new Cesium3DTilesetModel()
         this._OBJClass = makeUClass(Cesium3DTilesetView)
         this.type = "CesiumTerrain"
-        this._Type = "CesiumTerrain"
+        this.Type = "CesiumTerrain"
+        this.Birthplace = "Coverage"
+
     }
 
     ExecuteAdd(jsonData: any): string {
         let out = super.ExecuteAdd(jsonData)
         if(out == "success"){
-            this._OBJMaps.get(jsonData.data.id).Tags.Add(this._Type)
+            this.OBJMaps.get(jsonData.data.id).Tags.Add(this.Type)
         }
         return out
     }
 
-    private static Ins: CesiumTerrainViewModel;
-    public static Get() {
-      if (!CesiumTerrainViewModel.Ins) {
-        CesiumTerrainViewModel.Ins = new CesiumTerrainViewModel();
-      }
-      return CesiumTerrainViewModel.Ins;
+       ExecuteDelete(jsonData: any): string {
+        let OutValue = super.ExecuteDelete(jsonData)
+        if(OutValue=== "success"){
+            MessageCenter.Execute(NotificationLists.API.CESIUMTERRAIN_DELETE_FINISHED,jsonData.data.ids)
+        }
+        return OutValue
+    }
+    ExecuteClear(jsondata: any): string {
+        let OutValue = super.ExecuteClear(jsondata)
+        if(OutValue=== "execution is completed"){
+            MessageCenter.Execute(NotificationLists.API.CESIUMTERRAIN_CLEAR_FINISHED)
+        }
+        return OutValue
     }
 
     ExecuteGetAllCesiumTerrain(jsondata){
       let CesiumTerrainModels = []
-      let allModels = this._BaseModel.GetAllData()
+      let allModels = this.BaseModel.GetAllData()
       if(allModels.size>0){
         allModels.forEach((value,key)=>{
           CesiumTerrainModels.push(value)
@@ -52,7 +63,7 @@ export class CesiumTerrainViewModel extends BaseViewModel{
 
     ExecuteGetCesiumTerrainById(jsondata){
       let id = jsondata.data.id
-      let Model = this._BaseModel.GetData(id)
+      let Model = this.BaseModel.GetData(id)
       return Model
     }
 

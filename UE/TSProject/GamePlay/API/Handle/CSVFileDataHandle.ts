@@ -1,15 +1,20 @@
-///
-/// Copyright by Cengzi Technology Co., Ltd. All Rights Reserved.  Office Website : www.openzi.com || www.cengzi.com 成都曾自科技版权所有 保留所有权利
-/// Created by xLin.
-/// DateTime: 2022/10/10 18:10
-///
+/*
+ * Copyright by Cengzi Technology Co., Ltd. All Rights Reserved.  Office Website : www.openzi.com || www.cengzi.com 成都曾自科技版权所有 保留所有权利
+ * Created by xLin.
+ * DateTime: 2022/10/10 18:10
+ */
+
 
 import * as UE from "ue"
-import {$ref, $unref} from "puerts";
-import {BlueprintPathsLibrary, NewArray} from "ue";
+import {$ref} from "puerts";
+import {NewArray} from "ue";
+import { GetSystem } from "../../../System/Engine/QEngine";
+import { ProjectSystem } from "../../../System/Project/Project/ProjectSystem";
+import * as path from "path";
 
-export function GetCSVFileData(path: string, type: any): any {
-    let Path: string =  UE.BlueprintPathsLibrary.ProjectContentDir() + path
+export function GetCSVFileData(inpath: string, type: any): any {
+
+    let Path: string =  path.join(GetSystem(ProjectSystem).GetProjectDir(),inpath)
     let Headers: UE.TArray<string> = NewArray(UE.BuiltinString)
     let Data: UE.TArray<string> = NewArray(UE.BuiltinString)
     let Total: number = 0

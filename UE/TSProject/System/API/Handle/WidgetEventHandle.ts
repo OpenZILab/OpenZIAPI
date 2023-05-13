@@ -12,7 +12,8 @@ export function OpenWidget(id){
     console.warn(id)
     let world = (argv.getByName("GameInstance") as UE.GameInstance).GetWorld() as UE.World
     let widgetClass =  UE.Class.Load(WidgetPath[id])
-    let widget =  UE.WorldFactoryHelpFuntion.CreateWidget(world, widgetClass)
+   // let widget =  UE.OpenZIFrameworkLibrary.CreateWidget(world, widgetClass)
+    let widget =  UE.OpenZIFrameworkLibrary.CreateWidget(world, widgetClass) as UE.OpenZIAPI.OpenZIFrameWork.BP.WebBrowser.WebBrowserView.WebBrowserView_C
     return widget
 }
 

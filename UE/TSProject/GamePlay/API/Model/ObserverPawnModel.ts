@@ -1,4 +1,3 @@
-
 ///
 /// Copyright by Cengzi Technology Co., Ltd. All Rights Reserved.  Office Website : www.openzi.com || www.cengzi.com 成都曾自科技版权所有 保留所有权利
 /// Created by xLin.
@@ -42,8 +41,8 @@ export class ObserverPawnModel extends BaseModel {
             pitch: {Range: {"min": -180, "max":180}},
             pitchRange: {Range: {"min": {X: -180, Y: -180}, "max":{X: 180, Y: 180}}},
             yaw: {Range: {"min": -180, "max":180}},
-            distance: {Range: {"min": 0, "max":1000000}},
-            distanceRange: {Range: {"min": {X: 0, Y: 0}, "max":{X: 100000, Y: 100000}}},
+            distance: {Range: {"min": 0, "max":100000000000000000000000}},
+            distanceRange: {Range: {"min": {X: 0, Y: 0}, "max":{X: 100000000000000000000000000000000, Y: 10000000000000000000000000000}}},
             autoRotateCountdown: {Range: {"min": 0, "max":1000000}},
             autoRotateDirection: {Range: {"min": -180, "max":180}},
             movementTime: {Range: {"min": 0, "max":10000}},
@@ -53,8 +52,8 @@ export class ObserverPawnModel extends BaseModel {
             twiddleFactor: {Range: {"min": 0, "max":360}},
             doubleClickFocusDistance: {Range: {"min": 0, "max":1000000}}
         }
-        this.typeName = "Pawn"
-        this.funcName = "SetCameraInfo"
+        this.typeName = "CesiumPawn"
+        this.funcName = "SpawnObject"
         this.InitDataAndRange()
     }
 }

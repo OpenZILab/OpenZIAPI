@@ -7,13 +7,37 @@ import { makeUClass } from "puerts";
 import { BaseViewModel } from "../../../../System/API/ViewModel/BaseViewModel";
 import { TrenchingModel } from "../Model/TrenchingModel";
 import { TrenchingView } from "../View/TrenchingView";
+import { MessageCenter } from "../../../../System/Core/NotificationCore/MessageManager";
+import { NotificationLists } from "../../../../System/Core/NotificationCore/NotificationLists";
+import * as UE from "ue"
+//import { TransformHelper } from "../../../../System/Project/Scene/SceneNodeUtil";
 
 export class TrenchingViewModel extends BaseViewModel {
 
     constructor() {
         super()
-        this._BaseModel = new TrenchingModel()
+        this.BaseModel = new TrenchingModel()
         this._OBJClass = makeUClass(TrenchingView)
-        this._Type = "Trenching"
+        this.Type = "Trenching"
+        this.Birthplace = "Coverage"
+        MessageCenter.Add(this,this.UpdateModelData,NotificationLists.API.UPDATE_TRENCH_DATA)
     }
+    EndDrawing(id){
+        let curObj = this.OBJMaps.get(id)
+        if(curObj){
+            curObj.EndDrawing()
+        }
+    }
+    UpdateModelData(id:string,Vectors:UE.TArray<UE.Vector>){
+        let data = this.BaseModel.GetData(id)
+        let tsVectors = []
+        for(let i = 0;i<Vectors.Num();i++){
+            let requireSceneNodeUtil = require("../../../../System/Project/Scene/SceneNodeUtil")
+            tsVectors.push(requireSceneNodeUtil.TransformHelper.QVectorToJson(Vectors.Get(i)))
+        }
+        data["Vectors"] =tsVectors
+        this.BaseModel.RefreshData(id, data)
+        MessageCenter.Execute(NotificationLists.API.UPDATE_TRENCH_COM,id)
+    }
+
 }

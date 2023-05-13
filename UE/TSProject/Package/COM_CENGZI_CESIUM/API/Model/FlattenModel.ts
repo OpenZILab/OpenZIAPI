@@ -10,7 +10,9 @@ export class FlattenModel extends BaseModel{
     constructor() {
         super()
         this.DefaultData = {
-            id: "Flatten_id"
+            id: "Flatten_id",
+            Vectors:[
+            ]
         }
     }
 }

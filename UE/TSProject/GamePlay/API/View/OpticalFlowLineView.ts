@@ -7,8 +7,10 @@
 import * as UE from 'ue'
 import {$ref, $unref} from "puerts";
 import {BaseView} from "../../../System/API/View/BaseView";
-import {EventDispatcher} from "../../../System/Core/EventDispatcher";
 import {NewArray} from "ue";
+import {GetViewModelByType} from "../../../System/API/ApiViewModelSystem";
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
 
 export class OpticalFlowLineView extends BaseView {
 
@@ -19,6 +21,10 @@ export class OpticalFlowLineView extends BaseView {
     SplineMesh: UE.TArray<UE.SplineMeshComponent>
     //@ts
     data: any
+    childActor: UE.Actor
+    CurSeconds: number
+    TotalTime: number
+    TimeRate: number
 
     Constructor(): void {
         this.PrimaryActorTick.bCanEverTick = true;
@@ -27,6 +33,10 @@ export class OpticalFlowLineView extends BaseView {
         this.Spline = this.CreateDefaultSubobjectGeneric<UE.SplineComponent>("Spline", UE.SplineComponent.StaticClass())
         this.Spline.SetupAttachment(this.Root, "Spline")
         this.SplineMesh = NewArray(UE.SplineMeshComponent)
+        this.childActor = undefined
+        this.TotalTime = 0
+        this.TimeRate = 0
+        this.CurSeconds = 0
     }
 
     ReceiveBeginPlay(): void {
@@ -35,10 +45,32 @@ export class OpticalFlowLineView extends BaseView {
     }
 
     ReceiveTick(DeltaSeconds: number): void {
-
+        if (this.data.moveChildActor) {
+            if (!UE.OpenZIFrameworkLibrary.GetActorHiddenInGame(this)){
+                this.TotalTime = 1 / this.TimeRate
+                this.CurSeconds = this.CurSeconds + DeltaSeconds
+                let ChildActorLocation = new UE.Vector(0,0,0)
+                let CurNum = 0
+                if (this.CurSeconds <= this.TotalTime) {
+                    CurNum = this.CurSeconds / this.TotalTime
+                } else if (this.CurSeconds > this.TotalTime && this.CurSeconds < this.TotalTime * 2 && this.data.loop === false) {
+                    CurNum = 1 - (this.CurSeconds - this.TotalTime) / this.TotalTime
+                } else {
+                    this.CurSeconds = 0
+                    CurNum = this.CurSeconds / this.TotalTime
+                }
+                ChildActorLocation = this.Spline.GetLocationAtDistanceAlongSpline(this.Spline.GetSplineLength() * CurNum, UE.ESplineCoordinateSpace.World)
+                let data = {
+                    type: "OpticalFlowLine",
+                    id: this.data.id,
+                    location: ChildActorLocation
+                }
+                MessageCenter.Execute(NotificationLists.API.FOLLOWER_API_MOVE,data)
+            }
+        }
     }
 
-    private  Init(): void {
+    private Init(): void {
         this.CoordinateConverterMgr = UE.CoordinateConverterMgr.GetCoodinateConverterMgr()
         this.Spline.ClearSplinePoints(true)
     }
@@ -47,52 +79,59 @@ export class OpticalFlowLineView extends BaseView {
         super.ReceiveEndPlay(EndPlayReason);
     }
 
-    ClearAllData(): void{
+    ClearAllData(): void {
         this.Spline.ClearSplinePoints()
-        for (let i = 0; i < this.SplineMesh.Num(); i++){
+        for (let i = 0; i < this.SplineMesh.Num(); i++) {
             this.SplineMesh.Get(i).K2_DestroyComponent(this.SplineMesh.Get(i))
         }
         this.SplineMesh.Empty()
     }
 
     RefreshView(jsonData): string {
-        this.data = jsonData.data
         this.ClearAllData()
-
-        let CurVector = new UE.Vector(0,0,0)
+        this.data = jsonData.data
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
+        let CurVector = new UE.Vector(0, 0, 0)
         let AllPoints = NewArray(UE.Vector)
-        for (let i = 0; i < this.data.coordinatesList.length;i++){
-            if (this.data.coordinatesList[i] === ""){
+        for (let i = 0; i < this.data.coordinatesList.length; i++) {
+            if (this.data.coordinatesList[i] === "") {
                 return "coordinatesList: index " + i + "is empty !"
             }
             let GeographicPos = new UE.GeographicCoordinates(this.data.coordinatesList[i].X, this.data.coordinatesList[i].Y, this.data.coordinatesList[i].Z)
-            let CurEngineLocation = $ref(new UE.Vector(0,0,0))
+            let CurEngineLocation = $ref(new UE.Vector(0, 0, 0))
             this.CoordinateConverterMgr.GeographicToEngine(this.data.GISType, GeographicPos, CurEngineLocation)
             let EngineLocation = $unref(CurEngineLocation)
-            CurVector = new UE.Vector(CurVector.X + EngineLocation.X,CurVector.Y + EngineLocation.Y,CurVector.Z + EngineLocation.Z)
+            CurVector = new UE.Vector(CurVector.X + EngineLocation.X, CurVector.Y + EngineLocation.Y, CurVector.Z + EngineLocation.Z)
             AllPoints.Add(EngineLocation)
         }
-        CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length,CurVector.Z / this.data.coordinatesList.length)
+        CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length, CurVector.Z / this.data.coordinatesList.length)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0, 0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList, {
+            X: $unref(originCoordinate).Longitude,
+            Y: $unref(originCoordinate).Latitude,
+            Z: $unref(originCoordinate).Altitude
+        })
         let FHitResult = $ref(new UE.HitResult)
         this.K2_SetActorLocation(CurVector, false, FHitResult, false)
-        for (let i = 0; i < AllPoints.Num(); i++){
-            this.Spline.AddSplinePointAtIndex(AllPoints.Get(i),i,UE.ESplineCoordinateSpace.World,true)
-            this.Spline.SetSplinePointType(i,this.data.splinePointType,false)
+        for (let i = 0; i < AllPoints.Num(); i++) {
+            this.Spline.AddSplinePointAtIndex(AllPoints.Get(i), i, UE.ESplineCoordinateSpace.World, true)
+            this.Spline.SetSplinePointType(i, this.data.splinePointType, false)
         }
-        if (this.data.loop){
-            this.Spline.SetClosedLoop(this.data.loop,true)
-        }
+        this.Spline.SetClosedLoop(this.data.loop, true)
         this.Spline.UpdateSpline()
         this.CreatSplineMesh()
+        this.TimeRate = this.data.timeRate
         return "success"
     }
 
     CreatSplineMesh() {
         let SplineMeshNum
-        if (this.data.loop){
+        if (this.data.loop) {
             SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 1
-        }
-        else {
+        } else {
             SplineMeshNum = this.Spline.GetNumberOfSplinePoints() - 2
         }
         if (SplineMeshNum < 0) {
@@ -111,29 +150,29 @@ export class OpticalFlowLineView extends BaseView {
         let CurSpeed
         let CurUVRotation
         let UVName
-        switch (this.data.meshDirection){
+        switch (this.data.meshDirection) {
             case 0:
-                CurStaticMesh =  UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/CenterPlane.CenterPlane")
+                CurStaticMesh = UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/CenterPlane.CenterPlane")
                 CurInForwardAxis = UE.ESplineMeshAxis.X
-                CurInSplineUpDir = new UE.Vector(0,0,1)
+                CurInSplineUpDir = new UE.Vector(0, 0, 1)
                 CurSpeedName = "SpeedY"
                 CurSpeed = this.data.speed
                 CurUVRotation = 0.0
                 UVName = "V"
                 break
             case 1:
-                CurStaticMesh =  UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/SidePlane.SidePlane")
+                CurStaticMesh = UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/SidePlane.SidePlane")
                 CurInForwardAxis = UE.ESplineMeshAxis.X
-                CurInSplineUpDir = new UE.Vector(0,0,1)
+                CurInSplineUpDir = new UE.Vector(0, 0, 1)
                 CurSpeedName = "SpeedX"
                 CurSpeed = this.data.speed * (-0.1)
                 CurUVRotation = -0.25
                 UVName = "U"
                 break
             case 2:
-                CurStaticMesh =  UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/CenterPlane.CenterPlane")
+                CurStaticMesh = UE.StaticMesh.Load("/OpenZIAPI/Asset/Mesh/CenterPlane.CenterPlane")
                 CurInForwardAxis = UE.ESplineMeshAxis.Y
-                CurInSplineUpDir = new UE.Vector(0,0,-1)
+                CurInSplineUpDir = new UE.Vector(0, 0, -1)
                 CurSpeedName = "SpeedX"
                 CurSpeed = this.data.speed
                 CurUVRotation = 0.25
@@ -157,30 +196,29 @@ export class OpticalFlowLineView extends BaseView {
         }
 
         for (let i = 0; i <= SplineMeshNum; i++) {
-            this.Spline.SetSplinePointType(i,this.data.splinePointType,true)
+            this.Spline.SetSplinePointType(i, this.data.splinePointType, true)
             let name = "SplineMesh_" + i
             let CurSplineMesh = new UE.SplineMeshComponent(this, name)
             CurSplineMesh.SetMobility(UE.EComponentMobility.Movable)
             CurSplineMesh.SetStaticMesh(CurStaticMesh)
-            CurSplineMesh.SetForwardAxis(CurInForwardAxis,true)
-            CurSplineMesh.SetSplineUpDir(CurInSplineUpDir,true)
-            CurSplineMesh.SetStartScale(new UE.Vector2D(this.data.width / 50.0,this.data.width / 50.0),true)
-            CurSplineMesh.SetEndScale(new UE.Vector2D(this.data.width / 50.0,this.data.width / 50.0),true)
-            CurSplineMesh.SetMassScale("None",1.0)
-            let MaterialInst = CurSplineMesh.CreateDynamicMaterialInstance(0,Material,"None")
-            MaterialInst.SetScalarParameterValue("Brightness",this.data.brightness)
-            MaterialInst.SetVectorParameterValue("BaseColor",new UE.LinearColor(this.data.baseColor.X,this.data.baseColor.Y,this.data.baseColor.Z,this.data.baseColor.W))
-            MaterialInst.SetScalarParameterValue(CurSpeedName,CurSpeed)
-            MaterialInst.SetScalarParameterValue("UV_Rotation",CurUVRotation)
-            if (this.data.isOpenStroke){
-                MaterialInst.SetScalarParameterValue("Stroke_Swich",1.0)
+            CurSplineMesh.SetForwardAxis(CurInForwardAxis, true)
+            CurSplineMesh.SetSplineUpDir(CurInSplineUpDir, true)
+            CurSplineMesh.SetStartScale(new UE.Vector2D(this.data.width / 50.0, this.data.width / 50.0), true)
+            CurSplineMesh.SetEndScale(new UE.Vector2D(this.data.width / 50.0, this.data.width / 50.0), true)
+            CurSplineMesh.SetMassScale("None", 1.0)
+            let MaterialInst = CurSplineMesh.CreateDynamicMaterialInstance(0, Material, "None")
+            MaterialInst.SetScalarParameterValue("Brightness", this.data.brightness)
+            MaterialInst.SetVectorParameterValue("BaseColor", new UE.LinearColor(this.data.baseColor.X, this.data.baseColor.Y, this.data.baseColor.Z, this.data.baseColor.W))
+            MaterialInst.SetScalarParameterValue(CurSpeedName, CurSpeed)
+            MaterialInst.SetScalarParameterValue("UV_Rotation", CurUVRotation)
+            if (this.data.isOpenStroke) {
+                MaterialInst.SetScalarParameterValue("Stroke_Swich", 1.0)
+            } else {
+                MaterialInst.SetScalarParameterValue("Stroke_Swich", 0.0)
             }
-            else {
-                MaterialInst.SetScalarParameterValue("Stroke_Swich",0.0)
-            }
-            MaterialInst.SetScalarParameterValue("Base_Opacity",this.data.baseOpacity)
-            let CurstrokeWidth = UE.KismetMathLibrary.MapRangeClamped(this.data.strokeWidth,0,1,0.999,1.0002)
-            MaterialInst.SetScalarParameterValue("Stroke_Width",CurstrokeWidth)
+            MaterialInst.SetScalarParameterValue("Base_Opacity", this.data.baseOpacity)
+            let CurstrokeWidth = UE.KismetMathLibrary.MapRangeClamped(this.data.strokeWidth, 0, 1, 0.999, 1.0002)
+            MaterialInst.SetScalarParameterValue("Stroke_Width", CurstrokeWidth)
             CurSplineMesh.RegisterComponent()
             CurSplineMesh.K2_AttachToComponent(this.Root, name, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, true)
             this.SplineMesh.Add(CurSplineMesh)
@@ -196,10 +234,10 @@ export class OpticalFlowLineView extends BaseView {
                 tangent_1 = new UE.Vector(0, 0, 0)
                 tangent_2 = new UE.Vector(0, 0, 0)
             }
-            let CurVector = UE.KismetMathLibrary.Subtract_VectorVector($unref(location_1_rev),$unref(location_2_rev))
+            let CurVector = UE.KismetMathLibrary.Subtract_VectorVector($unref(location_1_rev), $unref(location_2_rev))
             let CurLength = UE.KismetMathLibrary.VSize(CurVector)
             let CurValue
-            switch (this.data.meshDirection){
+            switch (this.data.meshDirection) {
                 case 0:
                     CurValue = CurLength / (this.data.tilling * (-1.0))
                     break
@@ -210,7 +248,7 @@ export class OpticalFlowLineView extends BaseView {
                     CurValue = CurLength / this.data.tilling
                     break
             }
-            MaterialInst.SetScalarParameterValue(UVName,CurValue)
+            MaterialInst.SetScalarParameterValue(UVName, CurValue)
             CurSplineMesh.SetStartAndEnd($unref(location_1_rev), tangent_1, $unref(location_2_rev), tangent_2, true)
         }
     }

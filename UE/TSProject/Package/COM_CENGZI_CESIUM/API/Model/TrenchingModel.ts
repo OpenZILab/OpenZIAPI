@@ -11,9 +11,11 @@ export class TrenchingModel extends BaseModel{
         super()
         this.DefaultData = {
             id: "Flatten_id",
-            depth : 500, 
+            depth : 500,
             SideMaterial : "Material'/OpenZIAPI/CesiumTools/Material/M_Side.M_Side'",
-            ButtomMaterial : "Material'/OpenZIAPI/CesiumTools/Material/M_Buttom.M_Buttom'"
+            ButtomMaterial : "Material'/OpenZIAPI/CesiumTools/Material/M_Buttom.M_Buttom'",
+            Vectors:[
+            ]
         }
     }
 }

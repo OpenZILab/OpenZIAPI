@@ -7,20 +7,23 @@
 import * as UE from "ue";
 import {MeasureView} from "./MeasureView";
 import {$ref, $unref} from "puerts";
-import {NewArray} from "ue";
+import {NewArray, Vector2D} from "ue";
 import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
 import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
 
 export class MeasureDistanceView extends MeasureView {
 
     //@ts
-    UMG_Array_Distance: UE.TArray<UE.UserWidget>
-    LocArray: UE.TArray<UE.Vector>
+    UMG_Array_Distance: UE.TArray<UE.WidgetComponent>
 
     Constructor(){
         super.Constructor()
-        this.UMG_Array_Distance = NewArray(UE.UserWidget)
-        this.LocArray = NewArray(UE.Vector)
+        this.UMG_Array_Distance = NewArray(UE.WidgetComponent)
     }
 
     ReceiveBeginPlay(): void {
@@ -39,8 +42,36 @@ export class MeasureDistanceView extends MeasureView {
         super.Init()
     }
 
+    ClearAllData(): void{
+        super.ClearAllData()
+    }
+
     RefreshView(jsonData): string {
-        return super.RefreshView(jsonData)
+        if (!jsonData.data.isAuto){
+            if (this.IsAuto){
+                let NotifiItem
+                let NotifiStyle = new NotificationStyle()
+                NotifiStyle.RegisterFrameStyle(MessageTips.API.MeasureDistance, 600, 3, false)
+                // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+                NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+                NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+                NotifiItem.ExpireAndFadeout()
+            }
+        }
+        let result = super.RefreshView(jsonData)
+        return result
+    }
+
+    Measure(): string{
+        return this.MeasurePointsAndCable()
+    }
+
+    MeasurePoints(){
+        return super.MeasurePoints()
+    }
+
+    MeasurePointsAndCable(){
+        return super.MeasurePointsAndCable()
     }
 
     GetUnderHit(): UE.HitResult{
@@ -73,6 +104,7 @@ export class MeasureDistanceView extends MeasureView {
 
     DrawCable(StartParam,StartNameId,EndParam,EndName): void{
         super.DrawCable(StartParam,StartNameId,EndParam,EndName)
+        this.AddDistance(this.firstLocation,this.secondLocation)
     }
 
     GetPoi(index): any{
@@ -83,8 +115,8 @@ export class MeasureDistanceView extends MeasureView {
         super.EndDraw()
     }
 
-    SetScale(CameraLocation): void{
-        super.SetScale(CameraLocation)
+    SetScaleTargetArmLength(TargetArmLength): void{
+        super.SetScaleTargetArmLength(TargetArmLength)
     }
 
     DrawDownEvent(CurLocation): void{
@@ -92,6 +124,7 @@ export class MeasureDistanceView extends MeasureView {
     }
 
     EndDrawEvent(): void{
+        super.EndDrawEvent()
         let msg ={
             classDef : "MeasureDistance",
             funcDef : "Stop",
@@ -107,14 +140,7 @@ export class MeasureDistanceView extends MeasureView {
     DrawDownLine(CurLocation): void{
         this.DrawPoint(CurLocation)
         if (this.PointLocation.Num() > 1){
-            let temp1 = this.GetPoi(2)
-            let StartParam = temp1[0]
-            let StartName = temp1[1]
-            let temp2 = this.GetPoi(1)
-            let EndParam = temp2[0]
-            let EndName = temp2[1]
-            this.DrawCable(StartParam,1,EndParam,EndName)
-            this.AddDistance(this.PointLocation.Get(this.PointLocation.Num() - 2),CurLocation)
+            this.DrawCable(this.curPoint,1,this.lastPoint,this.lastPointName)
         }
     }
 
@@ -122,42 +148,46 @@ export class MeasureDistanceView extends MeasureView {
         let UW = UE.Class.Load("/OpenZIAPI/API/Analysis/Measure/Measure/UMG_Distance.UMG_Distance_C")
         let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
         type UMG_Distance_C  = UE.OpenZIAPI.API.Analysis.Measure.Measure.UMG_Distance.UMG_Distance_C
-        let CurUMG = UE.WidgetBlueprintLibrary.Create(this,UW,Controller) as UMG_Distance_C
-        CurUMG.AddToViewport(0)
-        let ViewportPosition = $ref(new UE.Vector2D(0,0))
+        let name = "UMG_" + this.UMG_Array_Distance.Num()
+        let curUMG = new UE.WidgetComponent(this, name)
+        curUMG.WidgetClass = UW
+        curUMG.SetDrawAtDesiredSize(true)
+        curUMG.SetPivot(new Vector2D(0, 0))
+        curUMG.SetWidgetSpace(UE.EWidgetSpace.Screen)
+        curUMG.K2_AttachToComponent(this.SenceRoot, name, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, true)
+        curUMG.RegisterComponent()
         let VerTemp = new UE.Vector((Onepoint.X + Twopoint.X)/2,(Onepoint.Y + Twopoint.Y)/2,(Onepoint.Z + Twopoint.Z)/2)
-        UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,VerTemp,ViewportPosition,false)
-        let CurViewportPosition = $unref(ViewportPosition)
-        CurUMG.SetPositionInViewport(CurViewportPosition,false)
-        this.UMG_Array_Distance.Add(CurUMG)
-        this.LocArray.Add(VerTemp)
+        let hit = $ref(new UE.HitResult)
+        curUMG.K2_SetWorldLocation(VerTemp, false, hit, false)
+        this.UMG_Array_Distance.Add(curUMG)
+        let CurrenWidget = curUMG.GetWidget() as UMG_Distance_C
         let distance = 0
         if (this.MeasureType === UE.EMeasureType.Horizontal){
             distance = UE.KismetMathLibrary.Vector_Distance(new UE.Vector(Onepoint.X,Onepoint.Y,0),new UE.Vector(Twopoint.X,Twopoint.Y,0))
             let temp = UE.KismetTextLibrary.Conv_FloatToText(distance / 100,UE.ERoundingMode.HalfFromZero,false,true,1,423,0,2)
             let st = "水平距离：" + temp + "米"
-            CurUMG.DisText.SetText(st)
+            CurrenWidget.DisText.SetText(st)
         }
         else if (this.MeasureType === UE.EMeasureType.Height){
             distance = Math.abs(Onepoint.Z - Twopoint.Z)
             let temp = UE.KismetTextLibrary.Conv_FloatToText(distance / 100,UE.ERoundingMode.HalfFromZero,false,true,1,423,0,2)
             let st = "高度：" + temp + "米"
-            CurUMG.DisText.SetText(st)
+            CurrenWidget.DisText.SetText(st)
         }
         else if (this.MeasureType === UE.EMeasureType.SraightLine){
             distance = UE.KismetMathLibrary.Vector_Distance(Onepoint,Twopoint)
             let temp = UE.KismetTextLibrary.Conv_FloatToText(distance / 100,UE.ERoundingMode.HalfFromZero,false,true,1,423,0,2)
             let st = "直线距离：" + temp + "米"
-            CurUMG.DisText.SetText(st)
+            CurrenWidget.DisText.SetText(st)
         }
     }
 
     RemoveUI(): void{
         if (this.UMG_Array_Distance.Num() > 0){
             for (let index = 0; index < this.UMG_Array_Distance.Num(); index++){
-                this.UMG_Array_Distance.Get(index).RemoveFromParent()
+                this.UMG_Array_Distance.Get(index).K2_DestroyComponent(this.UMG_Array_Distance.Get(index))
             }
-            this.UMG_Array_Distance = null
+            this.UMG_Array_Distance.Empty()
         }
     }
 
@@ -165,26 +195,14 @@ export class MeasureDistanceView extends MeasureView {
         if (this.UMG_Array_Distance.Num() > 0){
             for (let index = 0; index < this.UMG_Array_Distance.Num(); index++){
                 if (Distance < this.MaxDistance){
-                    this.UMG_Array_Distance.Get(index).SetVisibility(UE.ESlateVisibility.Visible)
-                    this.UMG_Array_Distance.Get(index).SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
+                    this.UMG_Array_Distance.Get(index).SetVisibility(true,false)
+                    this.UMG_Array_Distance.Get(index).GetWidget().SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
                 }
                 else {
-                    this.UMG_Array_Distance.Get(index).SetVisibility(UE.ESlateVisibility.Hidden)
+                    this.UMG_Array_Distance.Get(index).SetVisibility(false,false)
                 }
             }
         }
     }
 
-    RefreshUI(): void{
-        let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
-        if (this.UMG_Array_Distance.Num() > 0){
-            for (let index = 0; index < this.UMG_Array_Distance.Num(); index++){
-                let loc = this.LocArray.Get(index)
-                let ViewportPosition = $ref(new UE.Vector2D(0,0))
-                UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,loc,ViewportPosition,false)
-                let CurViewportPosition = $unref(ViewportPosition)
-                this.UMG_Array_Distance.Get(index).SetPositionInViewport(CurViewportPosition,false)
-            }
-        }
-    }
 }

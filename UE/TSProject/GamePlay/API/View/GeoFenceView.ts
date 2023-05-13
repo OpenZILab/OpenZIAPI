@@ -19,19 +19,15 @@ export class GeoFenceView extends PlaneBase {
     //@ts
     data: any
 
-
     Constructor(): void {
         super.Constructor()
-        let Material_1 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/M_LINE_Inst")
-        this.DyMIFence = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_1,"None",UE.EMIDCreationFlags.None)
-        let Material_2 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/M_Master_material_Inst")
-        this.DyMIBottom = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_2,"None",UE.EMIDCreationFlags.None)
+        this.DyMIFence = undefined
+        this.DyMIBottom = undefined
         this.bRenderBottom = true
     }
 
     ReceiveBeginPlay(): void {
         super.ReceiveBeginPlay()
-
         this.Init()
     }
 
@@ -52,10 +48,9 @@ export class GeoFenceView extends PlaneBase {
         this.CoordinateConverterMgr = UE.CoordinateConverterMgr.GetCoodinateConverterMgr()
     }
 
-    private  UpdateHeightandColor(Height,RenderBottom,FencewallColor,FencebottomColor): void {
-        this.Height = Height
-        this.bRenderBottom = RenderBottom
+    private  UpdateHeightandColor(FencewallColor,FencebottomColor,FencewallLineNumber): void {
         this.DyMIFence.SetVectorParameterValue("Color",FencewallColor)
+        this.DyMIFence.SetScalarParameterValue("NumberLine",FencewallLineNumber)
         this.DyMIBottom.SetVectorParameterValue("Color",FencebottomColor)
     }
 
@@ -98,8 +93,12 @@ export class GeoFenceView extends PlaneBase {
     RefreshView(jsonData): string {
         this.ClearAllData()
         this.data = jsonData.data
+        if (this.data.coordinatesList.length == 0){
+            return "success"
+        }
         let CurVector = new UE.Vector(0,0,0)
         let AllPoints = NewArray(UE.Vector)
+        
         for (let i = 0; i < this.data.coordinatesList.length;i++){
             if (this.data.coordinatesList[i] === ""){
                 return "coordinatesList: index " + i + "is empty !"
@@ -112,6 +111,9 @@ export class GeoFenceView extends PlaneBase {
             AllPoints.Add(EngineLocation)
         }
         CurVector = new UE.Vector(CurVector.X / this.data.coordinatesList.length, CurVector.Y / this.data.coordinatesList.length,CurVector.Z / this.data.coordinatesList.length)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        this.CoordinatesToRelative(this.data.coordinatesList,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
         let FHitResult = $ref(new UE.HitResult)
         this.K2_SetActorLocation(CurVector, false, FHitResult, false)
         for (let i = 0; i < AllPoints.Num(); i++){
@@ -119,10 +121,29 @@ export class GeoFenceView extends PlaneBase {
             this.Spline.SetSplinePointType(i,UE.ESplinePointType.Linear,false)
         }
         this.Spline.UpdateSpline()
-        let height = this.data.height
-        let color1 = new UE.LinearColor(this.data.FencewallColor.X,this.data.FencewallColor.Y,this.data.FencewallColor.Z,this.data.FencewallColor.W)
-        let color2 = new UE.LinearColor(this.data.FencebottomColor.X,this.data.FencebottomColor.Y,this.data.FencebottomColor.Z,this.data.FencebottomColor.W)
-        this.UpdateHeightandColor(height,this.data.bottomVisible,color1,color2)
+        this.Height = this.data.height
+        this.bRenderBottom = this.data.bottomVisible
+        if (this.data.FencewallUseCustomMaterial){
+            let Material_1 = UE.MaterialInstance.Load(this.data.FencewallMaterial)
+            this.DyMIFence = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_1,"None",UE.EMIDCreationFlags.None)
+        }
+        else {
+            let Material_1 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/M_LINE_Inst")
+            this.DyMIFence = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_1,"None",UE.EMIDCreationFlags.None)
+            let color1 = new UE.LinearColor(this.data.FencewallColor.X,this.data.FencewallColor.Y,this.data.FencewallColor.Z,this.data.FencewallColor.W)
+            this.DyMIFence.SetVectorParameterValue("Color",color1)
+            this.DyMIFence.SetScalarParameterValue("NumberLine",this.data.FencewallLineNumber)
+        }
+        if (this.data.FencebottomUseCustomMaterial){
+            let Material_2 = UE.MaterialInstance.Load(this.data.FencebottomMaterial)
+            this.DyMIBottom = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_2,"None",UE.EMIDCreationFlags.None)
+        }
+        else {
+            let Material_2 = UE.MaterialInstance.Load("/OpenZIAPI/Asset/Material/M_Master_material_Inst")
+            this.DyMIBottom = UE.KismetMaterialLibrary.CreateDynamicMaterialInstance(this,Material_2,"None",UE.EMIDCreationFlags.None)
+            let color2 = new UE.LinearColor(this.data.FencebottomColor.X,this.data.FencebottomColor.Y,this.data.FencebottomColor.Z,this.data.FencebottomColor.W)
+            this.DyMIBottom.SetVectorParameterValue("Color",color2)
+        }
         this.Rebuild()
         return "success"
     }

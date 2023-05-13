@@ -12,8 +12,9 @@ import {OpticalFlowLineModel} from "../Model/OpticalFlowLineModel";
 export class OpticalFlowLineViewModel extends BaseViewModel  {
     constructor() {
         super()
-        this._BaseModel = new OpticalFlowLineModel()
+        this.BaseModel = new OpticalFlowLineModel()
         this._OBJClass = makeUClass(OpticalFlowLineView)
-        this._Type = "OpticalFlowLine"
+        this.Type = "OpticalFlowLine"
+        this.Birthplace = "Scene"
     }
 }

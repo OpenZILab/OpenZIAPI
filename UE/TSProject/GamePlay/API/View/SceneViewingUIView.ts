@@ -6,7 +6,6 @@
 
 import * as UE from "ue"
 
-
 type WidgetClass_type = UE.OpenZIAPI.API.View.Roaming.UMG_CameraPoint.UMG_CameraPoint_C
 
 export interface SceneViewingUIView extends WidgetClass_type {

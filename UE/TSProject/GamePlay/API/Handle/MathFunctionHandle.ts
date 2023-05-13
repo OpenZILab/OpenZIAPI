@@ -8,7 +8,6 @@ import * as UE from "ue";
 import {NewArray} from "ue";
 
 export function ReverseArray(Vec): any{
-    let temp = new UE.Vector(0,0,0)
     let InVecs = NewArray(UE.Vector)
     let n = Vec.Num()
     for (let i = 0; i < n; i++){

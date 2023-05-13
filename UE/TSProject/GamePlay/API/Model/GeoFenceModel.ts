@@ -21,7 +21,12 @@ export class GeoFenceModel extends BaseModel {
             height: 500,
             bottomVisible: true,
             FencewallColor: { X: 1, Y: 1, Z: 0, W: 1 },
+            FencewallLineNumber: 5,
             FencebottomColor: { X: 0, Y: 1, Z: 1, W: 0.5 },
+            FencewallUseCustomMaterial: false,
+            FencewallMaterial:"/OpenZIAPI/Asset/Material/ff_Material_tSimple_Inst",
+            FencebottomUseCustomMaterial:false,
+            FencebottomMaterial:"/OpenZIAPI/Asset/Material/ff_Material_tSimple_Inst"
         }
         this.DefaultDataRange = {
             GISType: {Range: {"min": 0, "max":3}},

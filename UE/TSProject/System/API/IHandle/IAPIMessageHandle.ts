@@ -6,7 +6,7 @@
 
 import * as GameAPI from "../../../GamePlay/API/Game_APIList"
 import * as SystemAPI from "../../../System/API/System_APIList"
-import { APIViewModelSystem, GetViewModelByType } from "../ApiViewModelSystem"
+import { GetViewModelByType } from "../ApiViewModelSystem"
 
 export function HandleMessage(message): void {
     console.log(message)
@@ -57,7 +57,7 @@ export function PackBroadcastMessage(message,data): void {
     result["classDef"] =  message.classDef
     result["funcDef"] = message.funcDef
     result["data"] = data
-    result["callback"] = "GlobalEventCallBack"
+    result["callback"] = "ALLReceiveMessage"
     message = JSON.stringify(result)
     console.warn(message)
     return message

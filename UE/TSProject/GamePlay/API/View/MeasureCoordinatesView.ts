@@ -7,21 +7,26 @@
 import * as UE from "ue";
 import {MeasureView} from "./MeasureView";
 import {$ref, $unref} from "puerts";
-import {NewArray} from "ue";
+import {NewArray, Vector2D} from "ue";
 import {CoodinateConverterViewModel} from "../ViewModel/CoodinateConverterViewModel";
 import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
 import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
 import { GetViewModel } from "../../../System/API/ApiViewModelSystem";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {MessageCenter} from "../../../System/Core/NotificationCore/MessageManager";
+import {NotificationLists} from "../../../System/Core/NotificationCore/NotificationLists";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
 
 export class MeasureCoordinatesView extends MeasureView {
 
     //@ts
-    UMGArray_Coord: UE.TArray<UE.UserWidget>
+    UMGArray_Coord: UE.TArray<UE.WidgetComponent>
     CoodinateConventer: CoodinateConverterViewModel
 
     Constructor(){
         super.Constructor()
-        this.UMGArray_Coord = NewArray(UE.UserWidget)
+        this.UMGArray_Coord = NewArray(UE.WidgetComponent)
         this.CoodinateConventer = GetViewModel(CoodinateConverterViewModel)
     }
 
@@ -41,8 +46,39 @@ export class MeasureCoordinatesView extends MeasureView {
         super.Init()
     }
 
+    ClearAllData(): void{
+        super.ClearAllData()
+    }
+
     RefreshView(jsonData): string {
-        return super.RefreshView(jsonData)
+        if (!jsonData.data.isAuto){
+            if (this.IsAuto){
+                let NotifiItem
+                let NotifiStyle = new NotificationStyle()
+                NotifiStyle.RegisterFrameStyle(MessageTips.API.MeasureCoordinates, 600, 3, false)
+                // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+                NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+                NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+                NotifiItem.ExpireAndFadeout()
+                MessageCenter.Add(this, (CurrentCoordinate: any) => {
+                    console.error(CurrentCoordinate.X + "...." + CurrentCoordinate.Y + "...." + CurrentCoordinate.Z)
+                },NotificationLists.API.CURRENT_COORDINATE)
+            }
+        }
+        let result = super.RefreshView(jsonData)
+        return result
+    }
+
+    Measure(): string{
+        return this.MeasurePoints()
+    }
+
+    MeasurePoints(){
+        return super.MeasurePoints()
+    }
+
+    MeasurePointsAndCable(){
+        return super.MeasurePointsAndCable()
     }
 
     GetUnderHit(): UE.HitResult{
@@ -71,6 +107,7 @@ export class MeasureCoordinatesView extends MeasureView {
 
     DrawPoint(CurLocation): void{
         super.DrawPoint(CurLocation)
+        this.AddCoord(this.secondLocation)
     }
 
     DrawCable(StartParam,StartNameId,EndParam,EndName): void{
@@ -85,16 +122,17 @@ export class MeasureCoordinatesView extends MeasureView {
         super.EndDraw()
     }
 
-    SetScale(CameraLocation): void{
-        super.SetScale(CameraLocation)
+    SetScaleTargetArmLength(TargetArmLength): void{
+        super.SetScaleTargetArmLength(TargetArmLength)
     }
 
     DrawDownEvent(CurLocation): void{
         this.DrawPoint(CurLocation)
-        this.AddCoord(CurLocation)
+        // this.AddCoord(CurLocation)
     }
 
     EndDrawEvent(): void{
+        super.EndDrawEvent()
         let msg ={
             classDef : "MeasureCoordinates",
             funcDef : "Stop",
@@ -110,9 +148,9 @@ export class MeasureCoordinatesView extends MeasureView {
     RemoveUI(): void{
         if (this.UMGArray_Coord.Num() > 0){
             for (let index = 0; index < this.UMGArray_Coord.Num(); index++){
-                this.UMGArray_Coord.Get(index).RemoveFromParent()
+                this.UMGArray_Coord.Get(index).K2_DestroyComponent(this.UMGArray_Coord.Get(index))
             }
-            this.UMGArray_Coord = null
+            this.UMGArray_Coord.Empty()
         }
     }
 
@@ -120,11 +158,11 @@ export class MeasureCoordinatesView extends MeasureView {
         if (this.UMGArray_Coord.Num() > 0){
             for (let index = 0; index < this.UMGArray_Coord.Num(); index++){
                 if (Distance < this.MaxDistance){
-                    this.UMGArray_Coord.Get(index).SetVisibility(UE.ESlateVisibility.Visible)
-                    this.UMGArray_Coord.Get(index).SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
+                    this.UMGArray_Coord.Get(index).SetVisibility(true,false)
+                    this.UMGArray_Coord.Get(index).GetWidget().SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
                 }
                 else {
-                    this.UMGArray_Coord.Get(index).SetVisibility(UE.ESlateVisibility.Hidden)
+                    this.UMGArray_Coord.Get(index).SetVisibility(false,false)
                 }
             }
         }
@@ -134,39 +172,32 @@ export class MeasureCoordinatesView extends MeasureView {
         let UW = UE.Class.Load("/OpenZIAPI/API/Analysis/Measure/Measure/UMG_Coord.UMG_Coord_C")
         let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
         type UMG_Coord_C  = UE.OpenZIAPI.API.Analysis.Measure.Measure.UMG_Coord.UMG_Coord_C
-        let CurUMG = UE.WidgetBlueprintLibrary.Create(this,UW,Controller) as UMG_Coord_C
-        CurUMG.AddToViewport(0)
-        let ViewportPosition = $ref(new UE.Vector2D(0,0))
-        UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,CurLocation,ViewportPosition,false)
-        let CurViewportPosition = $unref(ViewportPosition)
-        CurUMG.SetPositionInViewport(CurViewportPosition,false)
-        this.UMGArray_Coord.Add(CurUMG)
+        let name = "UMG_" + this.UMGArray_Coord.Num()
+        let curUMG = new UE.WidgetComponent(this, name)
+        curUMG.WidgetClass = UW
+        curUMG.SetDrawAtDesiredSize(true)
+        curUMG.SetPivot(new Vector2D(0, 0))
+        curUMG.SetWidgetSpace(UE.EWidgetSpace.Screen)
+        curUMG.K2_AttachToComponent(this.SenceRoot, name, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, true)
+        curUMG.RegisterComponent()
+        let hit = $ref(new UE.HitResult)
+        curUMG.K2_SetWorldLocation(CurLocation, false, hit, false)
+        this.UMGArray_Coord.Add(curUMG)
         let CurCoord = $ref(new UE.GeographicCoordinates)
         this.CoordinateConverterMgr.EngineToGeographic(this.CoodinateConventer.GetGISType(),CurLocation,CurCoord)
         let  Coord = $unref(CurCoord)
         let Longitude = Coord.Longitude
         let Latitude = Coord.Latitude
         let Altitude = Coord.Altitude
-        CurUMG.Longitude.SetText("Longitude：" + Longitude)
-        CurUMG.Latitude.SetText("Latitude：" + Latitude)
-        CurUMG.Height.SetText("Altitude：" + Altitude)
+        let CurrenWidget = curUMG.GetWidget() as UMG_Coord_C
+        CurrenWidget.Longitude.SetText("Longitude：" + Longitude)
+        CurrenWidget.Latitude.SetText("Latitude：" + Latitude)
+        CurrenWidget.Height.SetText("Altitude：" + Altitude)
         let CurString2 = "Longitude_Latitude：" + "[" + Longitude + "," + Latitude + "]"
         UE.KismetSystemLibrary.PrintString(this,CurString2,false)
-
         let CurString = "Longitude_Latitude_Altitude：" + "[" + Longitude + "," + Latitude + "," + Altitude + "]"
         UE.KismetSystemLibrary.PrintString(this,CurString,false)
-    }
-
-    RefreshUI(): void{
-        let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
-        if (this.UMGArray_Coord.Num() > 0){
-            for (let index = 0; index < this.UMGArray_Coord.Num(); index++){
-                let loc = this.PointLocation.Get(index)
-                let ViewportPosition = $ref(new UE.Vector2D(0,0))
-                UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,loc,ViewportPosition,false)
-                let CurViewportPosition = $unref(ViewportPosition)
-                this.UMGArray_Coord.Get(index).SetPositionInViewport(CurViewportPosition,false)
-            }
-        }
+        let CurrentCoordinate = {X: Longitude, Y:Latitude, Z:Altitude}
+        MessageCenter.Execute(NotificationLists.API.CURRENT_COORDINATE,CurrentCoordinate)
     }
 }

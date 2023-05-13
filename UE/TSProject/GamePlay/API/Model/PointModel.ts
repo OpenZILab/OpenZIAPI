@@ -38,7 +38,12 @@ export class PointModel extends BaseModel {
             labelOffset: { X: 0, Y: 0 },
             labelAlwaysVisible: true,
             labelVisibleRange: { X: 0, Y: 2000 },
-            focusDistance:100
+            focusDistance:100,
+            sendScreemCoordinates: false,
+            tickTime: 0,
+            autoMove: false,
+            followerFromType:"",
+            followerFromId:""
         }
         this.DefaultDataRange = {
             GISType: {Range: {min: 0, max:3}},
@@ -54,8 +59,8 @@ export class PointModel extends BaseModel {
             labelFontColor: {Range: {"min": {X: 0, Y: 0, Z: 0, W: 0}, "max":{X: 1, Y: 1, Z: 1, W: 1}}},
             labelFontJustification: {Range: {"min": 0, "max":2}},
             labelBackgroundColor: {Range: {"min": {X: 0, Y: 0, Z: 0, W: 0}, "max":{X: 1, Y: 1, Z: 1, W: 1}}},
-            labelPivot: {Range: {"min": {X: -100, Y: -100}, "max":{X: 100, Y: 100}}},
-            labelOffset: {Range: {"min": {X: -100, Y: -100}, "max":{X: 100, Y: 100}}},
+            labelPivot: {Range: {"min": {X: -1000, Y: -1000}, "max":{X: 1000, Y: 1000}}},
+            labelOffset: {Range: {"min": {X: -1000, Y: -1000}, "max":{X: 1000, Y: 1000}}},
             labelVisibleRange: {Range: {"min": {X: 0, Y: 0}, "max":{X: 1000000, Y: 1000000}}},
             focusDistance: {Range: {"min": 0, "max":10000000000}}
         }

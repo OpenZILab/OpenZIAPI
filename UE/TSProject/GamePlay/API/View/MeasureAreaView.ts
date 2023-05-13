@@ -7,18 +7,23 @@
 import * as UE from "ue";
 import {MeasureView} from "./MeasureView";
 import {$ref, $unref} from "puerts";
-import {NewArray} from "ue";
+import {NewArray, Vector2D} from "ue";
 import {PolygonTriangulationAreaSum, TriangulationOfPolygon, VertexConversionUVs} from "../IHandle/ITriangulateHandle";
 import {PackCallBacKMessage} from "../../../System/API/IHandle/IAPIMessageHandle";
 import {WebSocketServer} from "../../../System/API/Handle/WebSocketServer";
+import {MessagePopup} from "../../../System/Core/MessagePupop/MessagePupop";
+import {MessageTips} from "../../../System/Core/MessagePupop/MessageList";
+import {NotificationStyle} from "../../../System/API/Handle/MessageNotificationHandle";
 
 export class MeasureAreaView extends MeasureView {
 
     //@ts
-    UMGArray_Area: UE.OpenZIAPI.API.Analysis.Measure.Measure.UMG_Area.UMG_Area_C
+    UMGArray_Area: UE.WidgetComponent
+    // UMGArray_Area: UE.OpenZIAPI.API.Analysis.Measure.Measure.UMG_Area.UMG_Area_C
 
     Constructor(){
         super.Constructor()
+        this.UMGArray_Area = undefined
     }
 
     ReceiveBeginPlay(): void {
@@ -37,8 +42,44 @@ export class MeasureAreaView extends MeasureView {
         super.Init()
     }
 
+    ClearAllData(): void{
+        super.ClearAllData()
+    }
+
     RefreshView(jsonData): string {
-        return super.RefreshView(jsonData)
+        if (!jsonData.data.isAuto){
+            if (this.IsAuto){
+                let NotifiItem
+                let NotifiStyle = new NotificationStyle()
+                NotifiStyle.RegisterFrameStyle(MessageTips.API.MeasureArea, 600, 3, false)
+                // NotifiStyle.AddNotifiButton("确定", () => { NotifiItem.SetCompletionState(UE.EDisplayState.CS_Pending) }, "cc", ENotifiButtonState.None)
+                NotifiItem = MessagePopup.ShowNotification(MessageTips.OPERATION_MESSAGE.NOTIFICATION, NotifiStyle)
+                NotifiItem.SetCompletionState(UE.EDisplayState.CS_None)
+                NotifiItem.ExpireAndFadeout()
+            }
+        }
+        let result = super.RefreshView(jsonData)
+        return result
+    }
+
+    Measure(): string{
+        let result = this.MeasurePointsAndCable()
+        if (result === "success") {
+            this.index++
+            this.DrawCable(this.curPoint,1,this.startPoint,this.startPointName)
+            this.DrawPlane()
+        } else {
+            return result
+        }
+        return result
+    }
+
+    MeasurePoints(){
+        return super.MeasurePoints()
+    }
+
+    MeasurePointsAndCable(){
+        return super.MeasurePointsAndCable()
     }
 
     GetUnderHit(): UE.HitResult{
@@ -81,8 +122,8 @@ export class MeasureAreaView extends MeasureView {
         super.EndDraw()
     }
 
-    SetScale(CameraLocation): void{
-        super.SetScale(CameraLocation)
+    SetScaleTargetArmLength(TargetArmLength): void{
+        super.SetScaleTargetArmLength(TargetArmLength)
     }
 
 
@@ -91,31 +132,9 @@ export class MeasureAreaView extends MeasureView {
     }
 
     EndDrawEvent(): void{
-        if (this.PointLocation.Num() >= 3){
-            let ProceduralMesh = new UE.ProceduralMeshComponent(this,"ProceduralMesh")
-            ProceduralMesh.RegisterComponent()
-            ProceduralMesh.K2_AttachToComponent(this.SenceRoot,"ProceduralMesh",UE.EAttachmentRule.KeepWorld,UE.EAttachmentRule.KeepWorld,UE.EAttachmentRule.KeepWorld,true)
-            let R = TriangulationOfPolygon(this.PointLocation)
-            let Tri = R[0]
-            let Normal = R[1]
-            let Size = PolygonTriangulationAreaSum(this.PointLocation,Tri,100)
-            let OutRectCenter = $ref(new UE.Vector(0,0,0))
-            let OutRectRotation = $ref(new UE.Rotator(0,0,0))
-            let OutSideLengthX = $ref(11)
-            let OutSideLengthY = $ref(11)
-            UE.KismetMathLibrary.MinAreaRectangle(this,this.PointLocation,new UE.Vector(0,0,1),OutRectCenter,OutRectRotation,OutSideLengthX,OutSideLengthY)
-            let temp = UE.KismetMathLibrary.FMax($unref(OutSideLengthX),$unref(OutSideLengthY))
-            let CurUVs = VertexConversionUVs(this.PointLocation,Normal,temp,0,new UE.Vector2D(0,0))
-            let Normals = NewArray(UE.Vector)
-            let Tangents = UE.NewArray(UE.ProcMeshTangent)
-            UE.KismetProceduralMeshLibrary.CalculateTangentsForMesh(this.PointLocation,Tri,CurUVs,$ref(Normals),$ref(Tangents))
-            ProceduralMesh.CreateMeshSection_LinearColor(0,this.PointLocation,Tri,Normals,CurUVs,undefined,undefined,undefined,undefined,Tangents,true)
-            ProceduralMesh.SetMaterial(0,this.MaterialInstCable)
-            this.AddArea(Size)
-        }
-        else {
-            console.error("Currently, less than 3 points are drawn and cannot form a surface !!!")
-        }
+        super.EndDrawEvent()
+        let result = "Stop"
+        result = result + ": " + this.DrawPlane()
         let msg ={
             classDef : "MeasureArea",
             funcDef : "Stop",
@@ -123,7 +142,7 @@ export class MeasureAreaView extends MeasureView {
             callback : this.JsonData.callback,
             pageID : this.JsonData.pageID,
         }
-        msg.data = {"result":"stop"}
+        msg.data = {"result":result}
         let message = PackCallBacKMessage(msg,  msg.data)
         WebSocketServer.GetInstance().OnSendWebMessage(message)
     }
@@ -182,26 +201,31 @@ export class MeasureAreaView extends MeasureView {
         let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
         type UMG_Area_C  = UE.OpenZIAPI.API.Analysis.Measure.Measure.UMG_Area.UMG_Area_C
         let UW = UE.Class.Load("/OpenZIAPI/API/Analysis/Measure/Measure/UMG_Area.UMG_Area_C")
-        let CurUMG = UE.WidgetBlueprintLibrary.Create(this,UW,Controller) as UMG_Area_C
-        CurUMG.AddToViewport(0)
-        this.UMGArray_Area = CurUMG
+        let name = "UMG_Area"
+        let curUMG = new UE.WidgetComponent(this, name)
+        curUMG.WidgetClass = UW
+        curUMG.SetDrawAtDesiredSize(true)
+        curUMG.SetPivot(new Vector2D(0, 0))
+        curUMG.SetWidgetSpace(UE.EWidgetSpace.Screen)
+        curUMG.K2_AttachToComponent(this.SenceRoot, name, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, UE.EAttachmentRule.KeepWorld, true)
+        curUMG.RegisterComponent()
+        this.UMGArray_Area = curUMG
         let locSun = new UE.Vector(0,0,0)
         for (let index = 0; index < this.PointLocation.Num(); index++){
             locSun = UE.KismetMathLibrary.Add_VectorVector(locSun ,this.PointLocation.Get(index))
         }
         let CurlocSun = UE.KismetMathLibrary.Divide_VectorInt(locSun ,this.PointLocation.Num())
-        let ViewportPosition = $ref(new UE.Vector2D(0,0))
-        UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,CurlocSun,ViewportPosition,false)
-        let CurViewportPosition = $unref(ViewportPosition)
-        this.UMGArray_Area.SetPositionInViewport(CurViewportPosition,false)
+        let hit = $ref(new UE.HitResult)
+        curUMG.K2_SetWorldLocation(CurlocSun, false, hit, false)
         let temp = UE.KismetTextLibrary.Conv_FloatToText(Area,UE.ERoundingMode.HalfFromZero,false,true,1,423,0,2)
+        let CurrenWidget = curUMG.GetWidget() as UMG_Area_C
         let st = "面积：" + temp + "平方米"
-        CurUMG.AreaText.SetText(st)
+        CurrenWidget.AreaText.SetText(st)
     }
 
     RemoveUI(): void{
         if (this.UMGArray_Area !== undefined){
-            this.UMGArray_Area.RemoveFromParent()
+            this.UMGArray_Area.K2_DestroyComponent(this.UMGArray_Area)
             this.UMGArray_Area = undefined
         }
     }
@@ -209,27 +233,45 @@ export class MeasureAreaView extends MeasureView {
     RefreshScale(Distance,Scale): void{
         if (this.UMGArray_Area !== undefined){
             if (Distance < this.MaxDistance){
-                this.UMGArray_Area.SetVisibility(UE.ESlateVisibility.Visible)
-                this.UMGArray_Area.SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
+                this.UMGArray_Area.SetVisibility(true,false)
+                this.UMGArray_Area.GetWidget().SetColorAndOpacity(new UE.LinearColor(1,1,1,Scale))
             }
             else {
-                this.UMGArray_Area.SetVisibility(UE.ESlateVisibility.Hidden)
+                this.UMGArray_Area.SetVisibility(false,false)
             }
         }
     }
 
-    RefreshUI(): void{
-        let Controller = UE.GameplayStatics.GetPlayerController(this, 0)
-        if (this.UMGArray_Area !== undefined && this.PointLocation.Num() >= 3){
-            let locSun = new UE.Vector(0,0,0)
-            for (let index = 0; index < this.PointLocation.Num(); index++){
-                locSun = UE.KismetMathLibrary.Add_VectorVector(locSun ,this.PointLocation.Get(index))
-            }
-            let CurlocSun = UE.KismetMathLibrary.Divide_VectorInt(locSun ,this.PointLocation.Num())
-            let ViewportPosition = $ref(new UE.Vector2D(0,0))
-            UE.WidgetLayoutLibrary.ProjectWorldLocationToWidgetPosition(Controller,CurlocSun,ViewportPosition,false)
-            let CurViewportPosition = $unref(ViewportPosition)
-            this.UMGArray_Area.SetPositionInViewport(CurViewportPosition,false)
+    DrawPlane(): string{
+        if (this.PointLocation.Num() >= 3){
+            let ProceduralMesh = new UE.ProceduralMeshComponent(this,"ProceduralMesh")
+            ProceduralMesh.RegisterComponent()
+            ProceduralMesh.K2_AttachToComponent(this.SenceRoot,"ProceduralMesh",UE.EAttachmentRule.KeepWorld,UE.EAttachmentRule.KeepWorld,UE.EAttachmentRule.KeepWorld,true)
+            ProceduralMesh.SetCollisionEnabled(UE.ECollisionEnabled.NoCollision)
+            let R = TriangulationOfPolygon(this.PointLocation)
+            let Tri = R[0]
+            let Normal = R[1]
+            let Size = PolygonTriangulationAreaSum(this.PointLocation,Tri,100)
+            let OutRectCenter = $ref(new UE.Vector(0,0,0))
+            let OutRectRotation = $ref(new UE.Rotator(0,0,0))
+            let OutSideLengthX = $ref(11)
+            let OutSideLengthY = $ref(11)
+            UE.KismetMathLibrary.MinAreaRectangle(this,this.PointLocation,new UE.Vector(0,0,1),OutRectCenter,OutRectRotation,OutSideLengthX,OutSideLengthY)
+            let temp = UE.KismetMathLibrary.FMax($unref(OutSideLengthX),$unref(OutSideLengthY))
+            let CurUVs = VertexConversionUVs(this.PointLocation,Normal,temp,0,new UE.Vector2D(0,0))
+            let Normals = NewArray(UE.Vector)
+            let Tangents = UE.NewArray(UE.ProcMeshTangent)
+            UE.KismetProceduralMeshLibrary.CalculateTangentsForMesh(this.PointLocation,Tri,CurUVs,$ref(Normals),$ref(Tangents))
+            ProceduralMesh.CreateMeshSection_LinearColor(0,this.PointLocation,Tri,Normals,CurUVs,undefined,undefined,undefined,undefined,Tangents,true)
+            ProceduralMesh.SetMaterial(0,this.MaterialInstCable)
+            this.PlaneSceneComponent = ProceduralMesh
+            this.AddArea(Size)
+            return "success"
+        }
+        else {
+            let result = "Currently, less than 3 points are drawn and cannot form a surface !!!"
+            console.error("Currently, less than 3 points are drawn and cannot form a surface !!!")
+            return result
         }
     }
 }

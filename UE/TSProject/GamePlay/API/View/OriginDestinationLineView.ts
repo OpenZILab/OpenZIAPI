@@ -7,7 +7,6 @@
 import * as UE from 'ue'
 import {$ref, $unref} from "puerts";
 import {BaseView} from "../../../System/API/View/BaseView";
-import {EventDispatcher} from "../../../System/Core/EventDispatcher";
 
 export class OriginDestinationLineView extends BaseView {
     //@C++
@@ -98,6 +97,17 @@ export class OriginDestinationLineView extends BaseView {
         let EngineLocationEnd = $unref(CurEngineLocationEnd)
         if ($unref(CurEngineLocationEnd) === null)
             return "coordinates is error"
+
+        let CurVector = new UE.Vector((EngineLocationstart.X + EngineLocationEnd.X) / 2,(EngineLocationstart.Y + EngineLocationEnd.Y) / 2,(EngineLocationstart.Z + EngineLocationEnd.Z) / 2)
+        let originCoordinate = $ref(new UE.GeographicCoordinates(0, 0,0))
+        this.CoordinateConverterMgr.EngineToGeographic(this.data.GISType, CurVector, originCoordinate)
+        let coordinateArray :{X:number,Y:number,Z:number}[] = []
+        coordinateArray.push(this.data.start)
+        coordinateArray.push(this.data.end)
+        this.CoordinatesToRelative(coordinateArray,{ X: $unref(originCoordinate).Longitude, Y: $unref(originCoordinate).Latitude, Z: $unref(originCoordinate).Altitude})
+        let FHitResult = $ref(new UE.HitResult)
+        this.K2_SetActorLocation(CurVector, false, FHitResult, false)
+
         let MiddleLocation = new UE.Vector((EngineLocationstart.X + EngineLocationEnd.X) / 2, (EngineLocationstart.Y + EngineLocationEnd.Y) / 2, (EngineLocationstart.Z + EngineLocationEnd.Z) / 2 + this.data.middleHeight)
         this.Spline.AddSplinePointAtIndex(EngineLocationstart,0,UE.ESplineCoordinateSpace.World,false)
         this.Spline.AddSplinePointAtIndex(MiddleLocation,1,UE.ESplineCoordinateSpace.World,false)

@@ -6,7 +6,7 @@
 
 import { $ref, $unref } from "puerts"
 import * as UE from "ue"
-import { EventDispatcher } from "../../../../System/Core/EventDispatcher"
+import { MessageCenter } from "../../../../System/Core/NotificationCore/MessageManager"
 
 export class CesiumSunView {
 
@@ -18,7 +18,7 @@ export class CesiumSunView {
 
     constructor() {
         this.CoordinateConverterMgr = UE.CoordinateConverterMgr.GetCoodinateConverterMgr()
-        this.World = UE.WorldFactoryHelpFuntion.GetCurrentWorld()
+        this.World = UE.OpenZIFrameworkLibrary.GetCurrentWorld()
         let OutActorList = $ref(UE.NewArray(UE.Actor))
         UE.GameplayStatics.GetAllActorsOfClass(this.World, UE.CesiumSunSky.StaticClass(), OutActorList)
         if($unref(OutActorList).Num()== 0){
@@ -32,7 +32,7 @@ export class CesiumSunView {
         this.SetTimeZone(8)
         this.CesiumSunViewSky.DirectionalLight.SetIntensity(3)
         this.CesiumSunViewSky.UpdateSun()
-        EventDispatcher.GetInstance().Add(this,this.UpdateTimeZone,"coordinateOriginChange")
+        MessageCenter.Add(this,this.UpdateTimeZone,"coordinateOriginChange")
     }
 
     SetTimeZone(Value) {
