@@ -12,13 +12,17 @@ The license for now if you need to use our product in Non-commercial the you can
 
 如果你使用我们得产品在非商业用途，你可以随意学习和研究。如果你想用在商业项目中，需要我们的商业授权许可，请联系support@openzi.com或访问我们的公司官网[OpenZI官方网站](http://cengzi.com/)获取更多信息。
 
-注：开源代码已上传Github，产品插件由于体积大小和暂未开放源码原因，请扫描微信公共号关注后点获取最新产品进行下载产品整包和项目案例，如您遇到问题可添加下方企业微信交流群进行沟通。
+注：开源代码已上传Github，产品插件由于体积大小和暂未开放源码原因，请扫描微信公共号关注后点获取最新产品或加入产品交流群进行下载产品整包和项目案例，如您遇到问题可添加下方企业微信交流群进行沟通。
 
 下方二维码：
 
-企业微信交流群  ||   微信公众号  ||  企业视频号  ||  企业微信客服
+企业微信交流群
 
-<img src="./Docs/wecom.png" alt="Logo" style="zoom:50%;" /><img src="./Docs/wechat.jpg" alt="Logo" style="zoom:46.1%;" /><img src="./Docs/wevideo.jpg" alt="Logo" style="zoom:46%;" /><img src="./Docs/weconnect.jpg" alt="Logo" style="zoom:31.5%;" />
+<img src="./Docs/wecom.png" alt="Logo" style="zoom:100%;" />
+
+微信公众号：
+
+<img src="./Docs/wechat.jpg" alt="Logo" style="zoom:100%;" />
 
 产品相关授权内容：
 
